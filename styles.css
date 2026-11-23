@@ -36,7 +36,7 @@ p { color: var(--muted); }
 .site-header { color: #edf5f7; background: #173944; }
 .mast { max-width: 1800px; margin: auto; min-height: 64px; padding: 12px 28px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
 .brand { display: flex; align-items: center; gap: 10px; font-weight: 650; white-space: nowrap; }
-.brand-mark { font-size: 23px; color: #b4d8df; line-height: 1; }
+.brand-mark { display: block; flex-shrink: 0; }
 .account { display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex-wrap: wrap; font-size: 12px; }
 #account-label { overflow-wrap: anywhere; }
 .account button { min-height: 34px; font-size: 12px; }
