@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#173944">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://cip-tracker.ruleein.workers.dev; object-src 'none'; base-uri 'none'; form-action 'self'">
+<title>CIP 공정현황</title>
+<link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+<header class="site-header">
+  <div class="mast">
+    <span class="brand"><span class="brand-mark" aria-hidden="true">⌖</span>토목공사 공정현황</span>
+    <div class="account" id="account" hidden>
+      <nav id="section-nav" aria-label="관리 메뉴" hidden>
+        <button type="button" id="tracker-menu" aria-controls="tracker" aria-pressed="true">공정현황</button>
+        <button type="button" id="approvals-menu" aria-controls="approvals" aria-pressed="false">계정 승인 <span id="pending-count" hidden></span></button>
+      </nav>
+      <span id="account-label"></span><button type="button" id="logout">로그아웃</button>
+    </div>
+  </div>
+</header>
+<main>
+  <section class="board gate" id="gate"><h2 id="gate-title">접속 상태 확인 중</h2><p id="gate-text" role="status"></p><button type="button" class="primary signin" id="google" hidden>Google로 로그인</button><button type="button" id="reload" hidden>다시 확인</button></section>
+  <div id="tracker" hidden>
+    <div class="heading">
+      <div><h1>CIP 공정현황</h1><p class="subtitle">도면에서 홀을 찾고 타설 완료일을 기록하세요.</p></div>
+      <p class="overall">전체 <span id="total"></span>개 중 <strong id="completed" aria-live="polite"></strong>개 완료</p>
+    </div>
+    <dl class="metrics" aria-label="공종별 타설 현황">
+      <div><dt><i class="swatch h-file" aria-hidden="true"></i>H파일</dt><dd><strong id="h-completed">0</strong><span> / <span id="h-total">397</span>개 완료</span></dd></div>
+      <div><dt><i class="swatch" aria-hidden="true"></i>철근망</dt><dd><strong id="cip-completed">0</strong><span> / <span id="cip-total">669</span>개 완료</span></dd></div>
+      <div><dt>미등록</dt><dd><strong id="remaining">0</strong><span>개 홀</span></dd></div>
+    </dl>
+    <div class="workspace board">
+      <section class="drawing" aria-labelledby="drawing-title">
+        <div class="drawing-toolbar">
+          <h2 id="drawing-title">시공현황</h2>
+          <form id="hole-search" role="search" aria-label="도면에서 홀 찾기" novalidate>
+            <label class="sr-only" for="hole-query">홀 번호</label><input id="hole-query" placeholder="홀 번호 검색 · 예: 213-1" autocomplete="off" aria-describedby="search-message"><button type="submit">찾기</button>
+          </form>
+        </div>
+        <div class="map-options">
+          <div class="filters">
+            <label>구분 <select id="map-kind"><option value="all">전체</option><option value="h">H파일</option><option value="cip">철근망</option></select></label>
+            <label>상태 <select id="map-status"><option value="all">전체</option><option value="done">타설 완료</option><option value="pending">미등록</option></select></label>
+            <output id="map-count" aria-live="polite"></output>
+          </div>
+          <p id="search-message" class="message" role="status"></p>
+        </div>
+        <div class="map-wrap">
+          <svg id="map" role="img" tabindex="0" aria-label="CIP 홀 배치도. 휠, 두 손가락 또는 더하기와 빼기로 확대·축소하고 화살표로 이동합니다. 홀 번호 검색으로도 선택할 수 있습니다."></svg>
+          <div class="selection" id="selection" role="status"></div>
+          <div class="map-navigation" aria-label="도면 조작">
+            <button type="button" id="zoom-in" aria-label="도면 확대">＋</button><button type="button" id="zoom-out" aria-label="도면 축소">−</button>
+            <output id="zoom-value" aria-label="도면 확대율">100%</output>
+            <button type="button" id="overview" aria-pressed="true">전체 맞춤</button><button type="button" id="detail" disabled>선택 홀 확대</button>
+          </div>
+        </div>
+        <div class="map-footer"><div class="legend"><span><i class="swatch h-file" aria-hidden="true"></i>H파일</span><span><i class="swatch" aria-hidden="true"></i>철근망</span><span><i class="swatch done" aria-hidden="true"></i>타설 완료</span></div><span id="hint">휠 또는 두 손가락으로 확대·축소</span></div>
+      </section>
+      <aside class="inspector" aria-labelledby="selected-title">
+        <div class="inspector-heading"><h2 id="selected-title">홀 상세</h2><button type="button" id="clear-selection" aria-label="홀 선택 해제" hidden>해제</button></div>
+        <div id="selection-empty" class="empty-selection"><span class="empty-mark" aria-hidden="true">⌖</span><h3>확인할 홀을 선택하세요.</h3><p>도면의 홀을 누르거나 번호로 검색하면 완료일을 확인할 수 있습니다.</p></div>
+        <div id="hole-info" hidden>
+          <p class="eyebrow" id="selected-kind"></p><h3 class="hole-number" id="selected-number"></h3>
+          <p class="status-badge" id="selected-status"></p>
+          <dl class="hole-facts"><div><dt>타설 완료일</dt><dd id="selected-date"></dd></div></dl>
+          <form id="single-form" novalidate hidden>
+            <fieldset id="single-fields"><label for="single-date">타설 완료일 입력</label><input id="single-date" type="date" required aria-describedby="single-message"><button class="primary" type="submit">완료일 저장</button></fieldset>
+          </form>
+          <p id="viewer-note" class="inspector-note" hidden>조회 전용 계정입니다. 완료일 변경은 수정 권한이 있는 계정에서 할 수 있습니다.</p>
+          <p id="single-message" class="message" role="status"></p>
+          <div class="inspector-help" id="bulk-help"><h3>여러 홀을 한 번에 기록하려면</h3><p>아래 ‘타설 기록 관리’에서 기록 추가를 눌러 완료일, 구분, 홀 번호를 붙여넣으세요.</p></div>
+        </div>
+      </aside>
+    </div>
+    <section class="board inputs history" id="record-manager" aria-labelledby="daily-title">
+      <div class="section-title"><div><h2 id="daily-title">타설 기록 관리</h2><p id="daily-count" aria-live="polite"></p></div><button type="button" class="primary" id="new-record" aria-expanded="false" aria-controls="entries" hidden>＋ 기록 추가 · 엑셀 붙여넣기</button></div>
+      <div class="record-filters filters"><label>완료일 <input id="record-date" type="date"></label><label>구분 <select id="record-kind"><option value="all">전체</option><option value="h">H파일</option><option value="cip">철근망</option></select></label><button type="button" id="reset-records">필터 초기화</button></div>
+      <section class="record-editor" id="entries" aria-labelledby="entry-title" hidden>
+        <div class="section-title"><div><h3 id="entry-title">기록 추가 · 엑셀 붙여넣기</h3><p>엑셀에서 완료일, 구분, 홀 번호 순서로 복사해 첫 완료일 칸에 붙여넣으세요. 같은 날짜·구분의 홀은 콤마로 구분합니다. 한 번에 최대 100개 홀을 저장합니다.</p></div><div class="editor-actions"><button type="button" id="add">＋ 행 추가</button><button type="button" id="close-entry">닫기</button></div></div>
+        <form id="entry-form" novalidate><fieldset id="bulk-fields"><div class="table-shell"><table class="completion-table entry-table" aria-label="타설완료일 입력"><colgroup><col class="date-col"><col class="kind-col"><col><col class="remove-col"></colgroup><thead><tr><th scope="col">완료일</th><th scope="col">구분</th><th scope="col">홀 번호</th><th scope="col" aria-label="입력 행 삭제"></th></tr></thead><tbody id="rows"></tbody></table></div><div class="action-row"><p id="message" class="message" role="status"></p><button class="primary" type="submit">기록 저장</button></div></fieldset></form>
+      </section>
+      <section class="record-editor" id="edit-records" aria-labelledby="edit-title" hidden>
+        <div class="section-title"><div><h3 id="edit-title">기존 완료일 수정</h3><p id="edit-description"></p></div><button type="button" id="cancel-edit">닫기</button></div>
+        <form id="edit-form" novalidate><fieldset id="edit-fields"><div class="edit-controls"><label for="edit-date">변경할 완료일</label><input type="date" id="edit-date" required><button type="button" id="select-edit-holes">전체 선택</button><button type="button" id="clear-edit-holes">선택 해제</button><output id="edit-count" aria-live="polite"></output></div><div id="edit-holes" class="edit-holes"></div><div class="action-row"><p id="edit-message" class="message" role="status"></p><button class="primary" type="submit">수정 저장</button></div></fieldset></form>
+      </section>
+      <p id="record-message" class="message ok" role="status"></p>
+      <div class="table-shell"><table class="completion-table record-table" aria-labelledby="daily-title"><colgroup><col class="date-col"><col class="kind-col"><col><col class="quantity-col"><col class="manage-col"></colgroup><thead><tr><th scope="col">완료일</th><th scope="col">구분</th><th scope="col">홀 번호</th><th scope="col">수량</th><th scope="col" id="record-actions-title" hidden>관리</th></tr></thead><tbody id="daily-records"></tbody></table></div>
+    </section>
+  </div>
+  <section class="board inputs approvals" id="approvals" aria-labelledby="approvals-title" hidden><div class="section-title"><h2 id="approvals-title">계정 승인</h2><button type="button" id="refresh-users">새로고침</button></div><div class="table-shell"><table><thead><tr><th scope="col">Google 계정</th><th scope="col">권한</th><th scope="col">변경</th></tr></thead><tbody id="users"></tbody></table></div><p id="users-status" class="message" role="status"></p></section>
+</main>
+<dialog id="confirm" aria-labelledby="confirm-title"><h2 id="confirm-title">기존 타설완료일 수정</h2><p id="changes"></p><form method="dialog" class="action-row"><button value="cancel">취소</button><button class="primary" value="apply">수정 저장</button></form></dialog>
+<script src="./completions.js" defer></script>
+<script src="./pages-config.js" defer></script>
+<script src="./pages-auth.js" defer></script>
+<script src="./app.js" defer></script>
+</body>
+</html>
