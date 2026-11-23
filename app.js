@@ -620,6 +620,7 @@ $('confirm').addEventListener('close',()=>{
 
 function showGate(title,text,{signIn=false,reload=false}={}) {
   $('gate-title').textContent=title;
+  $('gate-title').hidden=!title;
   $('gate-text').textContent=text;
   $('google').hidden=!signIn;
   $('reload').hidden=!reload;
@@ -722,9 +723,10 @@ async function load() {
       if (!loginError && new URLSearchParams(location.search).get('login') === 'failed') {
         loginError = '로그인을 완료하지 못했습니다. 다시 시도하세요.';
       }
-      showGate('Google 계정으로 접속', loginError || 'Google로 로그인한 뒤 관리자 승인을 받으면 도면을 볼 수 있습니다.',{signIn:true});
+      showGate('', loginError || '처음 로그인하면 관리자 승인 후 이용할 수 있습니다.',{signIn:true});
       return;
     }
+    $('site-header').hidden=false;
     $('account').hidden=false;
     $('account-label').textContent=`${user.email} · ${roleName[user.role]}`;
     if (user.role==='pending' || user.role==='revoked') {
@@ -737,6 +739,7 @@ async function load() {
     applyRecords(data.records);
     $('total').textContent=holes.length;
     $('gate').hidden=true;
+    document.body.classList.remove('gate-open');
     $('tracker').hidden=false;
     if (editableRoles.has(user.role)) {
       $('new-record').hidden=false;

@@ -19,7 +19,7 @@
 body { margin: 0; }
 [hidden] { display: none !important; }
 button, input, select { font: inherit; }
-button, .signin { min-height: 38px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 5px; background: #fff; color: var(--ink); font-weight: 600; cursor: pointer; }
+button { min-height: 38px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 5px; background: #fff; color: var(--ink); font-weight: 600; cursor: pointer; }
 button:hover { background: var(--soft); }
 button { white-space: nowrap; }
 button:disabled { opacity: .5; cursor: default; }
@@ -146,9 +146,43 @@ td { padding: 8px 9px; border-bottom: 1px solid #e6edf1; vertical-align: top; fo
 .approvals td:first-child { overflow-wrap: anywhere; }
 .approvals th:last-child { width: 90px; }
 .approvals .message { margin-top: 14px; }
-.gate { padding: 25px; max-width: 570px; }
-.gate p { margin: 8px 0 16px; }
-.signin { display: inline-block; text-decoration: none; }
+.gate-open {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  background: radial-gradient(ellipse at 50% 32%, #e2eff0, #f2f6f8 72%);
+}
+.gate-open main { flex: 1; display: grid; place-items: center; max-width: none; padding: 24px 16px; }
+.gate {
+  width: min(100%, 410px);
+  padding: clamp(24px, 6vw, 40px);
+  text-align: center;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  box-shadow: 0 16px 50px #17394414, 0 2px 6px #1739440a;
+}
+.gate-icon { display: block; margin: 0 auto 20px; }
+.gate h1 { font-size: clamp(22px, 6vw, 28px); margin-bottom: 22px; }
+.gate p { font-size: 13px; }
+.gate h2:not([hidden]) + p { margin-top: 6px; }
+.gate #reload { margin-top: 16px; }
+.signin {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  margin-bottom: 14px;
+  border-color: #747775;
+  border-radius: 8px;
+  color: #1f1f1f;
+  font-family: "Google Sans", Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  font-weight: 500;
+}
+.signin:hover { background: #f8faff; }
 dialog { width: 440px; max-width: calc(100vw - 30px); max-height: calc(100dvh - 40px); overflow-y: auto; border: 1px solid var(--line); border-radius: 10px; padding: 22px; color: var(--ink); }
 dialog::backdrop { background: #17394470; }
 dialog p { margin-top: 9px; overflow-wrap: anywhere; }
