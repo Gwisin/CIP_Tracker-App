@@ -7,10 +7,14 @@
 <meta name="referrer" content="no-referrer">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; connect-src 'self' https://cip-tracker.ruleein.workers.dev; object-src 'none'; base-uri 'none'; form-action 'self'">
 <title>CIP 공정현황</title>
+<link rel="icon" href="./favicon.ico" sizes="16x16 32x32 48x48">
+<link rel="icon" href="./favicon.svg" type="image/svg+xml" sizes="any">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png" sizes="180x180">
+<link rel="manifest" href="./site.webmanifest">
 <link rel="stylesheet" href="./styles.css">
 </head>
-<body>
-<header class="site-header">
+<body class="gate-open">
+<header class="site-header" id="site-header" hidden>
   <div class="mast">
     <span class="brand"><span class="brand-mark" aria-hidden="true">⌖</span>토목공사 공정현황</span>
     <div class="account" id="account" hidden>
@@ -23,7 +27,16 @@
   </div>
 </header>
 <main>
-  <section class="board gate" id="gate"><h2 id="gate-title">접속 상태 확인 중</h2><p id="gate-text" role="status"></p><button type="button" class="primary signin" id="google" hidden>Google로 로그인</button><button type="button" id="reload" hidden>다시 확인</button></section>
+  <section class="gate" id="gate" aria-labelledby="app-title">
+    <img class="gate-icon" src="./favicon.svg" width="76" height="76" alt="">
+    <h1 id="app-title">토목공사 공정현황</h1>
+    <button type="button" class="signin" id="google" aria-describedby="gate-text" hidden>
+      <img src="./google-mark.png" width="18" height="18" alt="">Google로 로그인
+    </button>
+    <h2 id="gate-title" hidden></h2>
+    <p id="gate-text" role="status">접속 상태를 확인하고 있습니다.</p>
+    <button type="button" id="reload" hidden>다시 확인</button>
+  </section>
   <div id="tracker" hidden>
     <div class="heading">
       <div><h1>CIP 공정현황</h1><p class="subtitle">도면에서 홀을 찾고 타설 완료일을 기록하세요.</p></div>
