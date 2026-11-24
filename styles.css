@@ -168,21 +168,83 @@ td { padding: 8px 9px; border-bottom: 1px solid #e6edf1; vertical-align: top; fo
 .gate p { font-size: 13px; }
 .gate h2:not([hidden]) + p { margin-top: 6px; }
 .gate #reload { margin-top: 16px; }
-.signin {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  width: 100%;
-  min-height: 44px;
-  margin-bottom: 14px;
-  border-color: #747775;
-  border-radius: 8px;
-  color: #1f1f1f;
-  font-family: "Google Sans", Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+
+/* The bundled font subsets cover the text shown on the login screen. */
+@font-face {
+  font-family: "Noto Sans KR";
+  src: url("./fonts/noto-sans-kr-login.woff2") format("woff2");
+  font-weight: 400 700;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Google Sans";
+  src: url("./fonts/google-sans-login.woff2") format("woff2");
   font-weight: 500;
+  font-display: swap;
+  unicode-range: U+0047, U+0065, U+0067, U+006C, U+006F;
+}
+.login-open {
+  background-color: #f4f7fb;
+  background-image:
+    radial-gradient(900px 520px at 12% 8%, rgba(27, 100, 218, .09), transparent 62%),
+    radial-gradient(800px 480px at 92% 92%, rgba(27, 100, 218, .07), transparent 62%),
+    linear-gradient(180deg, #f8fafd 0%, #eef3fa 100%);
+  background-attachment: fixed;
+}
+.login-open .gate {
+  --login-font: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  width: min(100%, 420px);
+  padding: 40px 40px 36px;
+  border: 0;
+  box-shadow: 0 12px 40px rgba(16, 24, 40, .08), 0 1px 3px rgba(16, 24, 40, .05);
+  font-family: var(--login-font);
+  -webkit-font-smoothing: antialiased;
+}
+.login-open .gate-icon { width: 92px; height: 92px; }
+.login-open .gate h1 {
+  margin-bottom: 28px;
+  color: #191f28;
+  font-size: 28px;
+  letter-spacing: -.02em;
+}
+.login-open .login-action { min-height: 44px; }
+.login-open .gate p {
+  margin-top: 14px;
+  color: #6b7684;
+  font-size: 14px;
+  line-height: 1.5;
+  letter-spacing: -.01em;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
+}
+.signin {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 30px;
+  border-color: #dadce0;
+  border-radius: 4px;
+  color: #3c4043;
+  font: 500 14px/20px "Google Sans", var(--login-font);
+  letter-spacing: .25px;
+}
+.signin img {
+  position: absolute;
+  inset-inline-start: 12px;
+  inset-block-start: 50%;
+  transform: translateY(-50%);
 }
 .signin:hover { background: #f8faff; }
+@media (max-width: 480px) {
+  .login-open .gate { padding: 30px 20px 32px; }
+  .login-open .gate-icon { width: 80px; height: 80px; margin-bottom: 16px; }
+}
+@media (max-width: 340px) {
+  .login-open .gate h1 { font-size: 26px; }
+}
+
 dialog { width: 440px; max-width: calc(100vw - 30px); max-height: calc(100dvh - 40px); overflow-y: auto; border: 1px solid var(--line); border-radius: 10px; padding: 22px; color: var(--ink); }
 dialog::backdrop { background: #17394470; }
 dialog p { margin-top: 9px; overflow-wrap: anywhere; }
