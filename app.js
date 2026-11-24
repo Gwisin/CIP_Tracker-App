@@ -619,6 +619,7 @@ $('confirm').addEventListener('close',()=>{
 });
 
 function showGate(title,text,{signIn=false,reload=false}={}) {
+  document.body.classList.toggle('login-open', signIn);
   $('gate-title').textContent=title;
   $('gate-title').hidden=!title;
   $('gate-text').textContent=text;
@@ -723,7 +724,7 @@ async function load() {
       if (!loginError && new URLSearchParams(location.search).get('login') === 'failed') {
         loginError = '로그인을 완료하지 못했습니다. 다시 시도하세요.';
       }
-      showGate('', loginError || '처음 로그인하면 관리자 승인 후 이용할 수 있습니다.',{signIn:true});
+      showGate('', loginError || 'Google 계정으로 로그인 후 이용할 수 있습니다.',{signIn:true});
       return;
     }
     $('site-header').hidden=false;
@@ -739,7 +740,7 @@ async function load() {
     applyRecords(data.records);
     $('total').textContent=holes.length;
     $('gate').hidden=true;
-    document.body.classList.remove('gate-open');
+    document.body.classList.remove('gate-open', 'login-open');
     $('tracker').hidden=false;
     if (editableRoles.has(user.role)) {
       $('new-record').hidden=false;
