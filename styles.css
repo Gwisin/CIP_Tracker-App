@@ -65,13 +65,28 @@ main { width: 100%; max-width: 1800px; margin: auto; padding: 26px 28px 36px; }
 .filters select { width: auto; min-height: 33px; padding-block: 4px; font-size: 12px; }
 #map-count { color: var(--muted); font-size: 12px; margin-left: auto; }
 #search-message:not(:empty) { margin-top: 8px; }
-.map-wrap { position: relative; border-block: 1px solid var(--line); background: #fafcfd; }
-#map { display: block; width: 100%; height: clamp(380px, calc(100dvh - 440px), 620px); touch-action: none; cursor: grab; user-select: none; }
+.map-wrap {
+  position: relative;
+  display: grid;
+  grid-template-rows: minmax(0, 1fr) auto;
+  height: clamp(380px, calc(100dvh - 440px), 620px);
+  border-block: 1px solid var(--line);
+  background: #fafcfd;
+}
+#map { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; user-select: none; }
 #map.dragging { cursor: grabbing; }
 .selection { display: none; position: absolute; top: 10px; left: 12px; max-width: calc(100% - 24px); padding: 5px 9px; border: 1px solid #bfd5dc; border-radius: 5px; background: #fff; color: var(--ink); font-size: 12px; pointer-events: none; }
 .selection.visible { display: block; }
-.map-navigation { position: absolute; bottom: 12px; left: 12px; right: 12px; display: flex; align-items: center; gap: 5px; flex-wrap: wrap; pointer-events: none; }
-.map-navigation > * { pointer-events: auto; }
+.map-navigation {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 8px 12px;
+  border-top: 1px solid var(--line);
+  background: #fff;
+}
+.map-navigation-group { display: flex; align-items: center; gap: inherit; }
 .map-navigation button { background: #fff; font-size: 12px; box-shadow: 0 1px 3px #2337460a; }
 .map-navigation button:hover { background: var(--soft); }
 #zoom-in, #zoom-out { min-width: 36px; font-size: 19px; padding: 2px 7px; }
@@ -274,8 +289,8 @@ dialog .action-row { justify-content: flex-end; }
   .map-options { padding: 0 12px 12px; }
   .filters { gap: 9px; }
   #map-count { margin-left: 0; }
-  #map { height: 360px; }
-  .map-navigation { gap: 4px; left: 8px; right: 8px; bottom: 8px; }
+  .map-wrap { height: 360px; }
+  .map-navigation { gap: 4px; padding-inline: 8px; }
   .map-navigation button { padding-inline: 8px; }
   #zoom-value { min-width: 40px; padding-inline: 3px; }
   .map-footer { padding: 10px 12px; }
