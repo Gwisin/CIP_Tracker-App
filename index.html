@@ -69,10 +69,14 @@
         <div class="map-wrap">
           <svg id="map" role="img" tabindex="0" aria-label="CIP 홀 배치도. 휠, 두 손가락 또는 더하기와 빼기로 확대·축소하고 화살표로 이동합니다. 홀 번호 검색으로도 선택할 수 있습니다."></svg>
           <div class="selection" id="selection" role="status"></div>
-          <div class="map-navigation" aria-label="도면 조작">
-            <button type="button" id="zoom-in" aria-label="도면 확대">＋</button><button type="button" id="zoom-out" aria-label="도면 축소">−</button>
-            <output id="zoom-value" aria-label="도면 확대율">100%</output>
-            <button type="button" id="overview" aria-pressed="true">전체 맞춤</button><button type="button" id="detail" disabled>선택 홀 확대</button>
+          <div class="map-navigation" role="group" aria-label="도면 조작">
+            <div class="map-navigation-group">
+              <button type="button" id="zoom-in" aria-label="도면 확대">＋</button><button type="button" id="zoom-out" aria-label="도면 축소">−</button>
+              <output id="zoom-value" aria-label="도면 확대율">100%</output>
+            </div>
+            <div class="map-navigation-group">
+              <button type="button" id="overview" aria-pressed="true">전체 맞춤</button><button type="button" id="detail" disabled>선택 홀 확대</button>
+            </div>
           </div>
         </div>
         <div class="map-footer"><div class="legend"><span><i class="swatch h-file" aria-hidden="true"></i>H파일</span><span><i class="swatch" aria-hidden="true"></i>철근망</span><span><i class="swatch done" aria-hidden="true"></i>타설 완료</span></div><span id="hint">휠 또는 두 손가락으로 확대·축소</span></div>
