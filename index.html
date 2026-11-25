@@ -111,41 +111,28 @@
       <div class="dashboard-sidebar">
         <aside class="inspector board" aria-labelledby="selected-title">
           <div class="inspector-heading"><h2 id="selected-title">홀 상세</h2><button type="button" id="clear-selection" aria-label="홀 선택 해제" hidden>해제</button></div>
-          <div id="selection-empty" class="empty-selection"><span class="empty-mark" aria-hidden="true">⌖</span><h3>확인할 홀을 선택하세요.</h3><p>도면의 홀을 누르거나 번호로 검색하면 완료일을 확인할 수 있습니다.</p></div>
+          <div id="selection-empty" class="empty-selection"><span class="empty-mark" aria-hidden="true">⌖</span><h3>확인할 홀을 선택하세요.</h3><p>도면의 홀을 누르거나 번호로 검색하면 완료일과 메모를 확인할 수 있습니다.</p></div>
           <div id="hole-info" hidden>
             <p class="eyebrow" id="selected-kind"></p><h3 class="hole-number" id="selected-number"></h3>
             <p class="status-badge" id="selected-status"></p>
             <dl class="hole-facts"><div><dt>타설 완료일</dt><dd id="selected-date"></dd></div></dl>
-            <form id="single-form" novalidate hidden>
-              <fieldset id="single-fields"><label for="single-date">타설 완료일 입력</label><input id="single-date" type="date" required aria-describedby="single-message"><button class="primary" type="submit">완료일 저장</button></fieldset>
+            <form id="memo-form" hidden>
+              <label for="hole-memo">메모</label>
+              <textarea id="hole-memo" rows="3" maxlength="1000" placeholder="현장 특이사항을 입력하세요." aria-describedby="memo-message"></textarea>
+              <div class="memo-actions"><p id="memo-message" class="message" role="status"></p><button id="save-memo" class="primary" type="submit">메모 저장</button></div>
             </form>
-            <p id="viewer-note" class="inspector-note" hidden>조회 전용 계정입니다. 완료일 변경은 수정 권한이 있는 계정에서 할 수 있습니다.</p>
-            <p id="single-message" class="message" role="status"></p>
-            <div class="inspector-help" id="bulk-help"><h3>여러 홀을 한 번에 기록하려면</h3><p>아래 ‘타설 기록 관리’에서 기록 추가를 눌러 완료일, 구분, 홀 번호를 붙여넣으세요.</p></div>
+            <dl id="memo-readonly" class="memo-readonly" hidden><div><dt>메모</dt><dd id="memo-text"></dd></div></dl>
+            <div class="inspector-help" id="bulk-help"><h3>여러 홀을 한 번에 기록하려면</h3><p>아래 ‘시공현황’에서 ‘기록 추가’를 눌러 엑셀에서 붙여넣으세요.</p></div>
           </div>
         </aside>
         <aside class="board history-panel" aria-labelledby="history-title">
-          <div class="section-title"><div><h2 id="history-title">타설기록 히스토리</h2><p id="history-count"></p></div><a href="#record-manager">전체 관리</a></div>
-          <div id="history-list" class="history-list" tabindex="0" aria-label="최근 타설기록, 스크롤해서 더 보기"></div>
+          <div class="section-title"><div><h2 id="history-title">시공현황</h2><p id="history-count"></p></div><button type="button" class="primary" id="new-record" aria-haspopup="dialog" aria-controls="entries" hidden>＋ 기록 추가</button></div>
+          <div id="history-list" class="history-list" tabindex="0" aria-label="일자별 타설 기록"></div>
+          <p id="record-message" class="message ok" role="status"></p>
           <button type="button" id="history-more" aria-controls="history-list" hidden>더보기</button>
         </aside>
-        </div>
+      </div>
     </div>
-    <section class="board inputs history" id="record-manager" aria-labelledby="daily-title">
-      <div class="section-title"><div><h2 id="daily-title">타설 기록 관리</h2><p id="daily-count" aria-live="polite"></p></div><button type="button" class="primary" id="new-record" aria-expanded="false" aria-controls="entries" hidden>＋ 기록 추가 · 엑셀 붙여넣기</button></div>
-      <div class="record-filters filters"><label>완료일 <input id="record-date" type="date"></label><label>구분 <select id="record-kind"><option value="all">전체</option><option value="h">H파일</option><option value="cip">철근망</option></select></label><button type="button" id="reset-records">필터 초기화</button></div>
-      <section class="record-editor" id="entries" aria-labelledby="entry-title" hidden>
-        <div class="section-title"><div><h3 id="entry-title">기록 추가 · 엑셀 붙여넣기</h3><p>엑셀에서 완료일, 구분, 홀 번호 순서로 복사해 첫 완료일 칸에 붙여넣으세요. 같은 날짜·구분의 홀은 콤마로 구분합니다. 한 번에 최대 100개 홀을 저장합니다.</p></div><div class="editor-actions"><button type="button" id="add">＋ 행 추가</button><button type="button" id="close-entry">닫기</button></div></div>
-        <form id="entry-form" novalidate><fieldset id="bulk-fields"><div class="table-shell"><table class="completion-table entry-table" aria-label="타설완료일 입력"><colgroup><col class="date-col"><col class="kind-col"><col><col class="remove-col"></colgroup><thead><tr><th scope="col">완료일</th><th scope="col">구분</th><th scope="col">홀 번호</th><th scope="col" aria-label="입력 행 삭제"></th></tr></thead><tbody id="rows"></tbody></table></div><div class="action-row"><p id="message" class="message" role="status"></p><button class="primary" type="submit">기록 저장</button></div></fieldset></form>
-      </section>
-      <section class="record-editor" id="edit-records" aria-labelledby="edit-title" hidden>
-        <div class="section-title"><div><h3 id="edit-title">기존 완료일 수정</h3><p id="edit-description"></p></div><button type="button" id="cancel-edit">닫기</button></div>
-        <form id="edit-form" novalidate><fieldset id="edit-fields"><div class="edit-controls"><label for="edit-date">변경할 완료일</label><input type="date" id="edit-date" required><button type="button" id="select-edit-holes">전체 선택</button><button type="button" id="clear-edit-holes">선택 해제</button><output id="edit-count" aria-live="polite"></output></div><div id="edit-holes" class="edit-holes"></div><div class="action-row"><p id="edit-message" class="message" role="status"></p><button class="primary" type="submit">수정 저장</button></div></fieldset></form>
-      </section>
-      <p id="record-message" class="message ok" role="status"></p>
-      <div class="table-shell"><table class="completion-table record-table" aria-labelledby="daily-title"><colgroup><col class="date-col"><col class="kind-col"><col><col class="quantity-col"><col class="manage-col"></colgroup><thead><tr><th scope="col">완료일</th><th scope="col">구분</th><th scope="col">홀 번호</th><th scope="col">수량</th><th scope="col" id="record-actions-title" hidden>관리</th></tr></thead><tbody id="daily-records"></tbody></table></div>
-      <button type="button" id="daily-more" aria-controls="daily-records" hidden>더보기</button>
-    </section>
   </div>
   <section class="mypage" id="mypage" aria-labelledby="mypage-title" hidden>
     <h1 id="mypage-title">마이페이지</h1>
@@ -158,7 +145,7 @@
       <div class="section-title">
         <div>
           <h2 id="approvals-title">계정 승인 및 권한 설정</h2>
-          <p>신규 가입자는 권한을 선택한 뒤 승인하세요. 조회 전용은 도면과 타설 기록을 볼 수 있고, 편집 가능은 타설 기록을 추가하고 수정할 수 있습니다.</p>
+          <p>신규 가입자는 권한을 선택한 뒤 승인하세요. 조회 전용은 도면, 타설 기록, 메모를 볼 수 있고, 편집 가능은 타설 기록과 메모를 저장할 수 있습니다.</p>
         </div>
         <button class="header-action" type="button" id="refresh-users">새로고침</button>
       </div>
@@ -168,6 +155,10 @@
     </section>
   </section>
 </main>
+<dialog id="entries" aria-labelledby="entry-title">
+  <div class="section-title"><div><h2 id="entry-title">기록 추가 · 엑셀 붙여넣기</h2><p>엑셀에서 완료일, 구분, 홀 번호 순서로 복사해 첫 완료일 칸에 붙여넣으세요. 같은 날짜·구분의 홀은 콤마로 구분합니다. 한 번에 최대 100개 홀을 저장합니다.</p></div><div class="editor-actions"><button type="button" id="add">＋ 행 추가</button><button type="button" id="close-entry">닫기</button></div></div>
+  <form id="entry-form" novalidate><fieldset id="bulk-fields"><div class="table-shell"><table class="completion-table entry-table" aria-label="타설완료일 입력"><colgroup><col class="date-col"><col class="kind-col"><col><col class="remove-col"></colgroup><thead><tr><th scope="col">완료일</th><th scope="col">구분</th><th scope="col">홀 번호</th><th scope="col" aria-label="입력 행 삭제"></th></tr></thead><tbody id="rows"></tbody></table></div><div class="action-row"><p id="message" class="message" role="status"></p><button class="primary" type="submit">기록 저장</button></div></fieldset></form>
+</dialog>
 <dialog id="confirm" aria-labelledby="confirm-title"><h2 id="confirm-title">기존 타설완료일 수정</h2><p id="changes"></p><form method="dialog" class="action-row"><button value="cancel">취소</button><button class="primary" value="apply">수정 저장</button></form></dialog>
 <script src="./completions.js" defer></script>
 <script src="./pages-config.js" defer></script>

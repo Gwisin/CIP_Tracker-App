@@ -4,6 +4,8 @@ let byId = new Map();
 let records = Object.create(null);
 let user;
 const revisions = new Map();
+const memos = new Map();
+const savingMemos = new Set();
 const editableRoles = new Set(['editor','admin']);
 const roleName = {admin:'관리자', editor:'편집 가능', viewer:'조회 전용', pending:'승인 대기', revoked:'접근 중지'};
 const $ = id => document.getElementById(id);
@@ -15,7 +17,6 @@ let viewport;
 const pointers = new Map();
 let gestureMoved = false;
 let pending = [];
-let pendingSource = 'bulk';
 let inspectorId = null;
 let rowNumber = 0;
 const namespace = 'http://www.w3.org/2000/svg';
@@ -23,10 +24,7 @@ const fmtDate = date => date.split('-').slice(1).map(Number).join('/');
 const typeOf = id => id.includes('-') ? 'cip' : 'h';
 const zoomLimit = 160;
 const maximumRows = 100;
-const dailyPageSize = 5;
-let dailyLimit = dailyPageSize;
 let saving = false;
-let editSnapshot = [];
 const entries = $('rows');
 let historyLimit = 8;
 let usersRequest = 0;
@@ -77,14 +75,18 @@ function renderInspector() {
   $('selected-status').classList.toggle('done', Boolean(records[hole.id]));
   $('selected-status').classList.toggle('cip-completion', kind === 'cip');
   $('selected-date').textContent = records[hole.id] || '등록된 완료일 없음';
-  $('single-form').hidden = !canEdit;
-  $('viewer-note').hidden = canEdit;
+  $('memo-form').hidden = !canEdit;
+  $('memo-readonly').hidden = canEdit;
+  $('memo-text').textContent = memos.get(hole.id)?.memo || '등록된 메모 없음';
   $('bulk-help').hidden = !canEdit;
+  const memo = $('hole-memo');
+  const isSaving = savingMemos.has(hole.id);
+  memo.readOnly = isSaving;
+  $('save-memo').disabled = isSaving;
   if (inspectorId !== hole.id) {
     inspectorId = hole.id;
-    $('single-date').value = records[hole.id] || '';
-    $('single-date').removeAttribute('aria-invalid');
-    saveMessage('', '', 'single');
+    memo.value = memos.get(hole.id)?.memo || '';
+    setMessage('memo-message', isSaving ? '메모를 저장하는 중입니다.' : '');
   }
 }
 function selectHole(id, {zoom = false} = {}) {
@@ -223,7 +225,7 @@ $('hole-search').onsubmit=event=>{
   input.removeAttribute('aria-invalid');
   selectHole(id, {zoom:true});
   $('search-message').className = 'message';
-  $('search-message').textContent = `${id}번 홀을 선택했습니다. 홀 상세에서 완료일을 확인하세요.`;
+  $('search-message').textContent = `${id}번 홀을 선택했습니다. 홀 상세에서 완료일과 메모를 확인하세요.`;
 };
 for (const id of ['map-kind', 'map-status']) $(id).onchange=()=>{
   if (saving) return;
@@ -331,13 +333,13 @@ function updateHolePlaceholder(row) {
   const kind = row.querySelector('[name=kind]').value;
   row.querySelector('[name=hole]').placeholder = kind === 'cip' ? '예: 215-1, 215-2' : '예: 213, 214';
 }
-function message(text,kind) {
-  saveMessage(text, kind, 'bulk');
-}
-function saveMessage(text, kind, source) {
-  const target = $(source === 'single' ? 'single-message' : source === 'edit' ? 'edit-message' : 'message');
+function setMessage(id, text, kind = '') {
+  const target = $(id);
   target.textContent = text;
   target.className = 'message ' + kind;
+}
+function message(text, kind) {
+  setMessage('message', text, kind);
 }
 async function api(path, {body, method} = {}) {
   const options = {method, body:body === undefined ? undefined : JSON.stringify(body),
@@ -357,7 +359,6 @@ function applyRecords(rows) {
     records[item.id] = item.date;
     revisions.set(item.id,item.revision);
   }
-  renderDailyRecords();
   renderHistory();
   renderMetrics();
 }
@@ -373,77 +374,6 @@ function recordHoleButton(id, label) {
     map.focus({preventScroll:true});
   };
   return button;
-}
-function renderDailyRecords(appendFrom = 0) {
-  const list = $('daily-records');
-  const dateFilter = $('record-date').value;
-  const kindFilter = $('record-kind').value;
-  const groups = CompletionTools.group(records).filter(group =>
-    (!dateFilter || group.date === dateFilter) &&
-    (kindFilter === 'all' || group[kindFilter].length)
-  );
-  const visible = groups.slice(0, dailyLimit);
-  const firstNewRow = list.rows.length;
-  if (!appendFrom) list.replaceChildren();
-  for (const {date, h, cip} of visible.slice(appendFrom)) {
-    for (const [kind, label, ids] of [['h', 'H파일', h], ['cip', '철근망', cip]]) {
-      if (!ids.length || (kindFilter !== 'all' && kind !== kindFilter)) continue;
-      const row = list.insertRow();
-      row.insertCell().textContent = date;
-      row.insertCell().textContent = label;
-      const cell = row.insertCell();
-      const numbers = document.createElement('div');
-      numbers.className = 'record-holes';
-      const appendHole = id => numbers.append(recordHoleButton(id, label));
-      ids.slice(0, 8).forEach(appendHole);
-      if (ids.length > 8) {
-        const more = document.createElement('button');
-        more.type = 'button';
-        more.className = 'record-more';
-        more.textContent = `외 ${ids.length - 8}개 펼치기`;
-        more.setAttribute('aria-expanded', 'false');
-        more.onclick = () => {
-          const expanded = more.getAttribute('aria-expanded') === 'true';
-          numbers.replaceChildren();
-          (expanded ? ids.slice(0, 8) : ids).forEach(appendHole);
-          more.textContent = expanded ? `외 ${ids.length - 8}개 펼치기` : '접기';
-          more.setAttribute('aria-expanded', String(!expanded));
-          numbers.append(more);
-        };
-        numbers.append(more);
-      }
-      cell.append(numbers);
-      row.insertCell().textContent = `${ids.length}개`;
-      const action = row.insertCell();
-      action.hidden = !editableRoles.has(user?.role);
-      if (!action.hidden) {
-        const edit = document.createElement('button');
-        edit.type = 'button';
-        edit.textContent = '수정';
-        edit.setAttribute('aria-label', `${date} ${label} ${ids.length}개 홀 완료일 수정`);
-        edit.disabled = saving;
-        edit.onclick = () => openRecordEditor(ids, date, label);
-        action.append(edit);
-      }
-    }
-  }
-  const total = visible.reduce((count, group) =>
-    count + (kindFilter === 'all' ? group.total : group[kindFilter].length), 0);
-  const period = dateFilter || '최근 기록';
-  const days = groups.length > visible.length
-    ? `전체 ${groups.length}일 중 ${visible.length}일 표시`
-    : `${visible.length}일`;
-  $('daily-count').textContent = `${period} · ${days} · ${total}개 홀 · 완료일 최신순`;
-  const remainingDays = groups.length - visible.length;
-  const more = $('daily-more');
-  more.hidden = remainingDays === 0;
-  more.textContent = `더보기 · ${remainingDays}일 남음`;
-  if (appendFrom) list.rows[firstNewRow]?.querySelector('.record-hole')?.focus();
-  if (!visible.length) {
-    const cell = list.insertRow().insertCell();
-    cell.colSpan = editableRoles.has(user?.role) ? 5 : 4;
-    cell.textContent = dateFilter || kindFilter !== 'all' ? '선택한 조건의 기록이 없습니다. 필터를 변경하세요.' : '등록된 타설 완료 기록이 없습니다. 홀을 선택해 완료일을 기록하세요.';
-  }
 }
 function renderHistory() {
   const groups = CompletionTools.group(records);
@@ -480,141 +410,55 @@ $('history-more').onclick = () => {
   list.scrollTop = top;
   list.scrollBy({top:240, behavior:'smooth'});
 };
-function openRecordEditor(ids, date, label) {
-  if (saving || !editableRoles.has(user?.role) || $('confirm').open) return;
-  // Keep the revisions from when editing starts, even if another form saves later.
-  editSnapshot = ids.map(id => ({id, expectedRevision: revisions.get(id) || 0}));
-  $('edit-date').value = date;
-  $('edit-date').removeAttribute('aria-invalid');
-  $('edit-description').textContent = `${date} · ${label} · ${ids.length}개 홀. 변경할 홀을 선택하세요. 한 번에 최대 100개 홀을 수정합니다.`;
-  $('edit-holes').replaceChildren();
-  for (const id of ids) {
-    const label = document.createElement('label');
-    const input = document.createElement('input');
-    input.type = 'checkbox';
-    input.value = id;
-    input.checked = ids.length <= maximumRows;
-    input.onchange = updateEditCount;
-    label.append(input, document.createTextNode(id));
-    $('edit-holes').append(label);
-  }
-  saveMessage('', '', 'edit');
-  $('record-message').textContent = '';
-  updateEditCount();
-  $('edit-records').hidden = false;
-  $('edit-records').scrollIntoView({block:'nearest'});
-  $('edit-date').focus({preventScroll:true});
-}
-function updateEditCount() {
-  const count = $('edit-holes').querySelectorAll('input:checked').length;
-  $('edit-count').textContent = `${count} / ${editSnapshot.length}개 홀 선택`;
-}
-$('select-edit-holes').onclick = () => {
-  if (saving) return;
-  if (editSnapshot.length > maximumRows) return saveMessage('100개를 초과하는 기록입니다. 수정할 홀을 최대 100개까지 직접 선택하세요.', 'error', 'edit');
-  for (const input of $('edit-holes').querySelectorAll('input')) input.checked = true;
-  updateEditCount();
-};
-$('clear-edit-holes').onclick = () => {
-  for (const input of $('edit-holes').querySelectorAll('input')) input.checked = false;
-  updateEditCount();
-};
-$('cancel-edit').onclick = () => {
-  if (saving) return;
-  $('edit-records').hidden = true;
-  editSnapshot = [];
-};
-$('edit-form').onsubmit = event => {
-  event.preventDefault();
-  if (saving || !editableRoles.has(user?.role)) return;
-  const selected = new Set([...$('edit-holes').querySelectorAll('input:checked')].map(input => input.value));
-  const {items, error} = CompletionTools.editItems(editSnapshot, selected, $('edit-date').value, maximumRows);
-  if (error) {
-    saveMessage(error, 'error', 'edit');
-    return;
-  }
-  requestSave(items, 'edit');
-};
 $('new-record').onclick = () => {
-  if (saving) return;
+  if (saving || !editableRoles.has(user?.role)) return;
   $('record-message').textContent = '';
-  $('entries').hidden = false;
-  $('new-record').setAttribute('aria-expanded', 'true');
   if (!entries.rows.length) addRow();
+  $('entries').showModal();
   entries.querySelector('[name=date]').focus();
 };
 $('close-entry').onclick = () => {
-  if (saving) return;
-  $('entries').hidden = true;
-  $('new-record').setAttribute('aria-expanded', 'false');
+  if (!saving) $('entries').close();
 };
-function resetDailyLimit() {
-  dailyLimit = dailyPageSize;
-  renderDailyRecords();
-}
-for (const id of ['record-date', 'record-kind']) $(id).onchange = resetDailyLimit;
-$('reset-records').onclick = () => {
-  $('record-date').value = '';
-  $('record-kind').value = 'all';
-  resetDailyLimit();
-};
-$('daily-more').onclick = () => {
-  const previousLimit = dailyLimit;
-  dailyLimit += dailyPageSize;
-  renderDailyRecords(previousLimit);
-};
+$('entries').addEventListener('cancel', event => {
+  if (saving) event.preventDefault();
+});
 async function writeRecords() {
   if (saving) return;
   saving = true;
-  const source = pendingSource;
   const items = pending;
   $('bulk-fields').disabled = true;
-  $('single-fields').disabled = true;
   $('add').disabled = true;
-  $('edit-fields').disabled = true;
-  $('new-record').disabled = true;
-  saveMessage('기록을 저장하는 중입니다.', '', source);
+  $('close-entry').disabled = true;
+  message('기록을 저장하는 중입니다.');
   try {
-    const data = await api('/api/completions',{method:'POST',body:{items}});
+    const data = await api('/api/completions', {method:'POST', body:{items}});
     applyRecords(data.records);
-    state.selected=items.at(-1).id;
+    state.selected = items.at(-1).id;
     if (viewport?.scale >= 4) {
-      const hole=byId.get(state.selected);
-      state.x=hole.x;
-      state.y=hole.y;
+      const hole = byId.get(state.selected);
+      state.x = hole.x;
+      state.y = hole.y;
     }
-    if (source === 'bulk') {
-      entries.replaceChildren();
-      addRow(typeOf(state.selected));
-    }
-    if (source === 'edit') {
-      // Keep active filters aligned with the saved date so the edited records stay visible.
-      if ($('record-date').value) $('record-date').value = items[0].date;
-      renderDailyRecords();
-      $('edit-records').hidden = true;
-      editSnapshot = [];
-      $('record-message').textContent = `${items.length}개 홀의 타설완료일을 수정했습니다.`;
-    }
-    inspectorId = null;
+    entries.replaceChildren();
+    addRow(typeOf(state.selected));
+    message('');
+    $('entries').close();
+    $('record-message').textContent = `${items.length}개 홀의 타설완료일을 저장했습니다.`;
     render();
-    saveMessage(`${items.length}개 홀의 타설완료일을 저장했습니다.`,'ok', source);
   } catch (error) {
-    saveMessage(error.message,'error', source);
+    message(error.message, 'error');
   } finally {
-    pending=[];
-    saving=false;
+    pending = [];
+    saving = false;
     $('bulk-fields').disabled = false;
-    $('single-fields').disabled = false;
     $('add').disabled = false;
-    $('edit-fields').disabled = false;
-    $('new-record').disabled = false;
-    renderDailyRecords();
+    $('close-entry').disabled = false;
   }
 }
-function requestSave(items, source) {
+function requestSave(items) {
   if (saving || $('confirm').open) return;
   pending = items;
-  pendingSource = source;
   const changed = items.filter(item => records[item.id] && records[item.id] !== item.date);
   if (changed.length) {
     $('changes').textContent = changed.map(item => `${item.id} (${records[item.id]} → ${item.date})`).join(', ');
@@ -622,24 +466,39 @@ function requestSave(items, source) {
     $('confirm').showModal();
   } else writeRecords();
 }
-$('single-form').onsubmit=event=>{
+$('memo-form').onsubmit = async event => {
   event.preventDefault();
-  if (saving || !editableRoles.has(user?.role) || !state.selected) return;
-  const date = $('single-date');
-  const {items, errors} = CompletionTools.collect([{type:typeOf(state.selected), holes:state.selected, date:date.value}], byId, revisions);
-  if (errors.length) {
-    date.setAttribute('aria-invalid', 'true');
-    saveMessage('올바른 타설완료일을 선택하세요.', 'error', 'single');
-    date.focus();
+  const id = state.selected;
+  if (!id || !editableRoles.has(user?.role) || savingMemos.has(id)) return;
+  const field = $('hole-memo');
+  const existing = memos.get(id);
+  const memo = field.value.trim();
+  if (memo === (existing?.memo || '')) {
+    field.value = memo;
+    setMessage('memo-message', memo ? '저장되었습니다.' : '', 'ok');
     return;
   }
-  date.removeAttribute('aria-invalid');
-  requestSave(items, 'single');
+  savingMemos.add(id);
+  renderInspector();
+  setMessage('memo-message', '메모를 저장하는 중입니다.');
+  try {
+    const data = await api('/api/hole-memos', {method:'POST', body:{id, memo, expectedRevision:existing?.revision || 0}});
+    memos.set(id, data.memo);
+    if (state.selected === id) {
+      field.value = data.memo.memo;
+      setMessage('memo-message', '저장되었습니다.', 'ok');
+    }
+  } catch (error) {
+    if (state.selected === id) {
+      field.value = memo;
+      setMessage('memo-message', error.message, 'error');
+    }
+  } finally {
+    savingMemos.delete(id);
+    if (state.selected === id) renderInspector();
+  }
 };
-$('single-date').oninput=()=>{
-  $('single-date').removeAttribute('aria-invalid');
-  saveMessage('', '', 'single');
-};
+$('hole-memo').oninput = () => setMessage('memo-message', '');
 $('add').onclick = () => {
   if (saving) return;
   if (entries.rows.length >= maximumRows) return message('한 번에 최대 100개 행을 입력할 수 있습니다.', 'error');
@@ -669,7 +528,7 @@ entries.addEventListener('paste', event => {
 });
 $('entry-form').addEventListener('submit',event=>{
   event.preventDefault();
-  if (saving) return;
+  if (saving || !editableRoles.has(user?.role)) return;
   const rows = [...entries.rows];
   const input = rows.map(row => {
     for (const field of row.querySelectorAll('[aria-invalid]')) field.removeAttribute('aria-invalid');
@@ -684,7 +543,7 @@ $('entry-form').addEventListener('submit',event=>{
     entries.querySelector('[aria-invalid]')?.focus();
     return;
   }
-  requestSave(items, 'bulk');
+  requestSave(items);
 });
 $('confirm').addEventListener('close',()=>{
   if($('confirm').returnValue==='apply') writeRecords();
@@ -899,6 +758,7 @@ async function load() {
     const data=await api('/api/holes');
     holes=data.holes;
     byId=new Map(holes.map(hole=>[hole.id,hole]));
+    for (const memo of data.memos || []) memos.set(memo.id, memo);
     applyRecords(data.records);
     $('total').textContent=holes.length;
     $('gate').hidden=true;
@@ -908,8 +768,6 @@ async function load() {
     $('mypage-menu').hidden = false;
     if (editableRoles.has(user.role)) {
       $('new-record').hidden=false;
-      $('record-actions-title').hidden=false;
-      addRow();
     }
     if (user.role==='admin') {
       $('approvals').hidden = false;
