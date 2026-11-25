@@ -65,7 +65,7 @@
   </section>
   <div id="tracker" hidden>
     <div class="heading">
-      <div><h1>CIP 공정현황</h1><p class="subtitle">도면에서 홀을 찾고 타설 완료일을 기록하세요.</p></div>
+      <h1>CIP 공정현황</h1>
       <p class="overall">전체 <span id="total"></span>개 중 <strong id="completed" aria-live="polite"></strong>개 완료</p>
     </div>
     <dl class="metrics" aria-label="공종별 타설 현황">
@@ -104,7 +104,7 @@
             </div>
           </div>
         </div>
-        <div class="map-footer"><div class="legend"><span><i class="swatch h-file" aria-hidden="true"></i>H파일</span><span><i class="swatch" aria-hidden="true"></i>철근망</span><span><i class="swatch done" aria-hidden="true"></i>타설 완료</span></div><span id="hint">휠 또는 두 손가락으로 확대·축소</span></div>
+        <div class="map-footer"><div class="legend"><span><i class="swatch h-file" aria-hidden="true"></i>H파일</span><span><i class="swatch" aria-hidden="true"></i>철근망</span><span><i class="swatch done" aria-hidden="true"></i>H파일 타설 완료</span><span><i class="swatch done cip-completion" aria-hidden="true"></i>철근망 타설 완료</span></div><span id="hint">휠 또는 두 손가락으로 확대·축소</span></div>
       </section>
       <aside class="inspector" aria-labelledby="selected-title">
         <div class="inspector-heading"><h2 id="selected-title">홀 상세</h2><button type="button" id="clear-selection" aria-label="홀 선택 해제" hidden>해제</button></div>
@@ -135,6 +135,7 @@
       </section>
       <p id="record-message" class="message ok" role="status"></p>
       <div class="table-shell"><table class="completion-table record-table" aria-labelledby="daily-title"><colgroup><col class="date-col"><col class="kind-col"><col><col class="quantity-col"><col class="manage-col"></colgroup><thead><tr><th scope="col">완료일</th><th scope="col">구분</th><th scope="col">홀 번호</th><th scope="col">수량</th><th scope="col" id="record-actions-title" hidden>관리</th></tr></thead><tbody id="daily-records"></tbody></table></div>
+      <button type="button" id="daily-more" aria-controls="daily-records" hidden>더보기</button>
     </section>
   </div>
   <section class="mypage" id="mypage" aria-labelledby="mypage-title" hidden>

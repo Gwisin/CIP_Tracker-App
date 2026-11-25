@@ -23,6 +23,8 @@ const fmtDate = date => date.split('-').slice(1).map(Number).join('/');
 const typeOf = id => id.includes('-') ? 'cip' : 'h';
 const zoomLimit = 160;
 const maximumRows = 100;
+const dailyPageSize = 5;
+let dailyLimit = dailyPageSize;
 let saving = false;
 let editSnapshot = [];
 const entries = $('rows');
@@ -67,10 +69,12 @@ function renderInspector() {
     inspectorId = null;
     return;
   }
-  $('selected-kind').textContent = typeOf(hole.id) === 'h' ? 'H파일' : '철근망';
+  const kind = typeOf(hole.id);
+  $('selected-kind').textContent = kind === 'h' ? 'H파일' : '철근망';
   $('selected-number').textContent = hole.id;
   $('selected-status').textContent = records[hole.id] ? '타설 완료' : '미등록';
   $('selected-status').classList.toggle('done', Boolean(records[hole.id]));
+  $('selected-status').classList.toggle('cip-completion', kind === 'cip');
   $('selected-date').textContent = records[hole.id] || '등록된 완료일 없음';
   $('single-form').hidden = !canEdit;
   $('viewer-note').hidden = canEdit;
@@ -120,7 +124,7 @@ function render() {
     const stroke = selected ? 'var(--teal)' : done ? 'var(--done-edge)' : hFile ? 'var(--h-edge)' : '#698589';
     const matches = matchesFilters(hole);
     if (selected) draw(scene, 'circle', {cx:hole.x, cy:hole.y, r:size+5, fill:'none', stroke:'var(--teal)', 'stroke-width':2, 'pointer-events':'none'});
-    const node = draw(scene,'circle',{cx:hole.x,cy:hole.y,r:size*.95,fill,stroke,'stroke-width':outline,'data-hole':hole.id,opacity:matches||selected?(done||selected||detail?1:.55):.16});
+    const node = draw(scene,'circle',{cx:hole.x,cy:hole.y,r:size*.95,fill,stroke,'stroke-width':outline,class:done && !hFile ? 'cip-completion' : '', 'data-hole':hole.id,opacity:matches||selected?(done||selected||detail?1:.55):.16});
     draw(node,'title',{},`${hole.id} · ${records[hole.id] || '미등록'}`);
     if (detail && done && numberFits(hole,size) && (matches || selected)) {
       draw(scene,'text',{x:hole.x,y:hole.y+4,'text-anchor':'middle','font-size':11,'font-weight':700,fill:'#fff','pointer-events':'none','data-number':hole.id},hole.id);
@@ -149,11 +153,14 @@ function render() {
       if (left<2 || left+boxWidth>width-2 || top<2 || top+16>height-2) continue;
       if (occupied.some(box => left < box.left+box.w+2 && left+boxWidth+2 > box.left && top < box.top+18 && top+18 > box.top)) continue;
       occupied.push({left,top,w:boxWidth});
-      const color = detail && date ? 'var(--done-edge)' : '#698589';
+      const completedLabel = detail && Boolean(date);
+      const labelLayer = completedLabel && typeOf(hole.id) === 'cip'
+        ? draw(scene, 'g', {class:'cip-completion'}) : scene;
+      const color = completedLabel ? 'var(--done-edge)' : '#698589';
       const start = size*.93;
-      draw(scene,'line',{x1:hole.x+hole.nx*start,y1:hole.y+hole.ny*start,x2:x,y2:y,stroke:color,'stroke-width':1,'pointer-events':'none'});
-      draw(scene,'rect',{x:left,y:top,width:boxWidth,height:16,rx:3,fill:detail&&date?'#fff0f1':'#eef5f4',stroke:color,'stroke-width':.65,'pointer-events':'none'});
-      draw(scene,'text',{x,y:y+4,'text-anchor':'middle','font-size':11,'font-weight':650,fill:detail&&date?'#8d1721':'#315456','pointer-events':'none','data-label-for':hole.id},label);
+      draw(labelLayer,'line',{x1:hole.x+hole.nx*start,y1:hole.y+hole.ny*start,x2:x,y2:y,stroke:color,'stroke-width':1,'pointer-events':'none'});
+      draw(labelLayer,'rect',{x:left,y:top,width:boxWidth,height:16,rx:3,fill:completedLabel?'var(--done-label-fill)':'#eef5f4',stroke:color,'stroke-width':.65,'pointer-events':'none'});
+      draw(labelLayer,'text',{x,y:y+4,'text-anchor':'middle','font-size':11,'font-weight':650,fill:completedLabel?'var(--done-label-ink)':'#315456','pointer-events':'none','data-label-for':hole.id},label);
       break;
     }
   }
@@ -352,19 +359,20 @@ function applyRecords(rows) {
   renderDailyRecords();
   renderMetrics();
 }
-function renderDailyRecords() {
+function renderDailyRecords(appendFrom = 0) {
   const list = $('daily-records');
   const dateFilter = $('record-date').value;
   const kindFilter = $('record-kind').value;
-  const groups = CompletionTools.group(records).filter(group => !dateFilter || group.date === dateFilter);
-  list.replaceChildren();
-  let total = 0;
-  const dates = new Set();
-  for (const {date, h, cip} of groups) {
+  const groups = CompletionTools.group(records).filter(group =>
+    (!dateFilter || group.date === dateFilter) &&
+    (kindFilter === 'all' || group[kindFilter].length)
+  );
+  const visible = groups.slice(0, dailyLimit);
+  const firstNewRow = list.rows.length;
+  if (!appendFrom) list.replaceChildren();
+  for (const {date, h, cip} of visible.slice(appendFrom)) {
     for (const [kind, label, ids] of [['h', 'H파일', h], ['cip', '철근망', cip]]) {
       if (!ids.length || (kindFilter !== 'all' && kind !== kindFilter)) continue;
-      total += ids.length;
-      dates.add(date);
       const row = list.insertRow();
       row.insertCell().textContent = date;
       row.insertCell().textContent = label;
@@ -416,8 +424,19 @@ function renderDailyRecords() {
       }
     }
   }
-  $('daily-count').textContent = `${dateFilter || '전체 기간'} · ${dates.size}일 · ${total}개 홀 · 완료일 최신순`;
-  if (!total) {
+  const total = visible.reduce((count, group) =>
+    count + (kindFilter === 'all' ? group.total : group[kindFilter].length), 0);
+  const period = dateFilter || '최근 기록';
+  const days = groups.length > visible.length
+    ? `전체 ${groups.length}일 중 ${visible.length}일 표시`
+    : `${visible.length}일`;
+  $('daily-count').textContent = `${period} · ${days} · ${total}개 홀 · 완료일 최신순`;
+  const remainingDays = groups.length - visible.length;
+  const more = $('daily-more');
+  more.hidden = remainingDays === 0;
+  more.textContent = `더보기 · ${remainingDays}일 남음`;
+  if (appendFrom) list.rows[firstNewRow]?.querySelector('.record-hole')?.focus();
+  if (!visible.length) {
     const cell = list.insertRow().insertCell();
     cell.colSpan = editableRoles.has(user?.role) ? 5 : 4;
     cell.textContent = dateFilter || kindFilter !== 'all' ? '선택한 조건의 기록이 없습니다. 필터를 변경하세요.' : '등록된 타설 완료 기록이 없습니다. 홀을 선택해 완료일을 기록하세요.';
@@ -491,11 +510,20 @@ $('close-entry').onclick = () => {
   $('entries').hidden = true;
   $('new-record').setAttribute('aria-expanded', 'false');
 };
-for (const id of ['record-date', 'record-kind']) $(id).onchange=renderDailyRecords;
-$('reset-records').onclick=()=>{
+function resetDailyLimit() {
+  dailyLimit = dailyPageSize;
+  renderDailyRecords();
+}
+for (const id of ['record-date', 'record-kind']) $(id).onchange = resetDailyLimit;
+$('reset-records').onclick = () => {
   $('record-date').value = '';
   $('record-kind').value = 'all';
-  renderDailyRecords();
+  resetDailyLimit();
+};
+$('daily-more').onclick = () => {
+  const previousLimit = dailyLimit;
+  dailyLimit += dailyPageSize;
+  renderDailyRecords(previousLimit);
 };
 async function writeRecords() {
   if (saving) return;
