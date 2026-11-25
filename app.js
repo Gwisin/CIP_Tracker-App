@@ -5,7 +5,7 @@ let records = Object.create(null);
 let user;
 const revisions = new Map();
 const editableRoles = new Set(['editor','admin']);
-const roleName = {admin:'관리자', editor:'수정 가능', viewer:'조회 전용', pending:'승인 대기', revoked:'접근 중지'};
+const roleName = {admin:'관리자', editor:'편집 가능', viewer:'조회 전용', pending:'승인 대기', revoked:'접근 중지'};
 const $ = id => document.getElementById(id);
 const map = $('map');
 const overview = {zoom:1, x:353.5, y:398.5, selected:null};
@@ -634,7 +634,11 @@ function showAdminView(approvals) {
   if (!approvals) render();
 }
 $('tracker-menu').onclick = () => showAdminView(false);
-$('approvals-menu').onclick = () => showAdminView(true);
+$('approvals-menu').onclick = () => {
+  if (user?.role !== 'admin') return;
+  showAdminView(true);
+  loadUsers();
+};
 async function loadUsers() {
   const request = ++usersRequest;
   const status=$('users-status');
@@ -649,26 +653,56 @@ async function loadUsers() {
     users.replaceChildren();
     for (const account of data.users) {
       const row=users.insertRow();
-      row.insertCell().textContent=account.email;
+      const profile = row.insertCell();
+      if (account.applicant) {
+        const name = document.createElement('strong');
+        name.textContent = account.applicant;
+        const company = document.createElement('div');
+        company.textContent = account.company;
+        const phone = document.createElement('div');
+        phone.textContent = account.phone;
+        profile.append(name, company, phone);
+      }
+      const email = document.createElement('div');
+      email.textContent = account.email;
+      profile.append(email);
       const role=document.createElement('select');
       role.setAttribute('aria-label',`${account.email} 권한`);
-      const roles=account.role==='pending' ? ['pending','viewer','editor','revoked'] : ['viewer','editor','revoked'];
-      for (const value of roles) role.add(new Option(roleName[value],value,value===account.role,value===account.role));
+      const awaitingApproval = account.role === 'pending';
+      if (awaitingApproval) {
+        role.add(new Option('승인 대기 · 권한 선택', 'pending', true, true));
+      }
+      for (const value of ['viewer', 'editor', 'revoked']) {
+        role.add(new Option(roleName[value], value, value === account.role, value === account.role));
+      }
       row.insertCell().append(role);
       const apply=document.createElement('button');
-      apply.textContent='저장';
-      apply.disabled=true;
-      role.onchange=()=>{apply.disabled=role.value===account.role;};
-      apply.onclick=async ()=>{
-        apply.disabled=true;
-        role.disabled=true;
+      apply.type = 'button';
+      function updateAction() {
+        apply.disabled = role.value === account.role;
+        apply.textContent = awaitingApproval
+          ? (role.value === 'revoked' ? '접근 중지' : '승인')
+          : '저장';
+      }
+      updateAction();
+      role.onchange = updateAction;
+      apply.onclick = async () => {
+        const selectedRole = role.value;
+        apply.disabled = true;
+        role.disabled = true;
         try {
-          await api('/api/users',{method:'POST',body:{subject:account.subject,role:role.value}});
-          if (await loadUsers()) status.textContent=`${account.email} 권한을 변경했습니다.`;
+          await api('/api/users', {method:'POST', body:{subject:account.subject, role:selectedRole}});
+          if (await loadUsers()) {
+            const action = awaitingApproval ? '승인했습니다' : '변경했습니다';
+            status.textContent = selectedRole === 'revoked'
+              ? `${account.email} 계정의 접근을 중지했습니다.`
+              : `${account.email} 계정을 ${roleName[selectedRole]} 권한으로 ${action}.`;
+          }
         } catch (error) {
-          status.textContent=error.message;
-          role.disabled=false;
-          apply.disabled=false;
+          status.textContent = error.message;
+        } finally {
+          role.disabled = false;
+          updateAction();
         }
       };
       row.insertCell().append(apply);
@@ -680,6 +714,32 @@ async function loadUsers() {
     return false;
   }
 }
+function showPendingApproval() {
+  $('registration').hidden = true;
+  $('gate').hidden = false;
+  $('account-label').textContent = `${user.email} · ${roleName.pending}`;
+  showGate('관리자 승인 대기', '권한이 부여되면 다시 확인을 누르세요.', {reload:true});
+}
+$('registration-form').onsubmit = async event => {
+  event.preventDefault();
+  const fields = $('registration-fields');
+  if (fields.disabled) return;
+  const form = event.currentTarget;
+  const body = Object.fromEntries(new FormData(form));
+  const status = $('registration-status');
+  status.textContent = '';
+  fields.disabled = true;
+  try {
+    await api('/api/registration', {method:'POST', body});
+    form.reset();
+    showPendingApproval();
+    $('reload').focus();
+  } catch (error) {
+    status.textContent = error.message;
+  } finally {
+    fields.disabled = false;
+  }
+};
 $('refresh-users').onclick=loadUsers;
 $('reload').onclick=()=>location.reload();
 $('google').onclick = async () => {
@@ -724,14 +784,26 @@ async function load() {
       if (!loginError && new URLSearchParams(location.search).get('login') === 'failed') {
         loginError = '로그인을 완료하지 못했습니다. 다시 시도하세요.';
       }
-      showGate('', loginError || 'Google 계정으로 로그인 후 이용할 수 있습니다.',{signIn:true});
+      showGate('', loginError || '처음 로그인하면 사용신청과 관리자 승인 후 이용할 수 있습니다.',{signIn:true});
       return;
     }
     $('site-header').hidden=false;
     $('account').hidden=false;
     $('account-label').textContent=`${user.email} · ${roleName[user.role]}`;
-    if (user.role==='pending' || user.role==='revoked') {
-      showGate(user.role==='pending'?'관리자 승인 대기':'접근이 중지된 계정입니다.','권한이 부여되면 다시 확인을 누르세요.',{reload:true});
+    if (user.role === 'pending') {
+      if (user.needsRegistration) {
+        document.body.classList.remove('login-open');
+        $('gate').hidden = true;
+        $('registration-email').textContent = user.email;
+        $('account-label').textContent = `${user.email} · 사용신청`;
+        $('registration').hidden = false;
+      } else {
+        showPendingApproval();
+      }
+      return;
+    }
+    if (user.role === 'revoked') {
+      showGate('접근이 중지된 계정입니다.', '권한이 부여되면 다시 확인을 누르세요.', {reload:true});
       return;
     }
     const data=await api('/api/holes');
@@ -749,6 +821,7 @@ async function load() {
     }
     if (user.role==='admin') {
       $('section-nav').hidden=false;
+      $('approvals-menu').hidden=false;
       loadUsers();
     }
     render();

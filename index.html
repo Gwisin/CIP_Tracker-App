@@ -20,7 +20,7 @@
     <div class="account" id="account" hidden>
       <nav id="section-nav" aria-label="관리 메뉴" hidden>
         <button type="button" id="tracker-menu" aria-controls="tracker" aria-pressed="true">공정현황</button>
-        <button type="button" id="approvals-menu" aria-controls="approvals" aria-pressed="false">계정 승인 <span id="pending-count" hidden></span></button>
+        <button type="button" id="approvals-menu" hidden aria-controls="approvals" aria-pressed="false">계정 승인 및 권한 <span id="pending-count" hidden></span></button>
       </nav>
       <span id="account-label"></span><button type="button" id="logout">로그아웃</button>
     </div>
@@ -39,6 +39,30 @@
     <h2 id="gate-title" hidden></h2>
     <p id="gate-text" role="status">접속 상태를 확인하고 있습니다.</p>
     <button type="button" id="reload" hidden>다시 확인</button>
+  </section>
+  <section class="gate registration" id="registration" aria-labelledby="registration-title" hidden>
+    <h2 id="registration-title">사용신청</h2>
+    <p>처음 로그인하셨습니다. 관리자 승인을 위해 가입 정보를 입력하세요.</p>
+    <div class="registration-account">
+      <span>로그인한 Google 계정</span>
+      <strong id="registration-email"></strong>
+    </div>
+    <form id="registration-form" method="post">
+      <fieldset id="registration-fields">
+        <label>회사명
+          <input name="company" type="text" autocomplete="organization" placeholder="예: 가나다건설" maxlength="100" required>
+        </label>
+        <label>사용자
+          <input name="applicant" type="text" placeholder="예: 김힐튼 매니저(공사)" maxlength="100" required>
+        </label>
+        <label>전화번호
+          <input name="phone" type="tel" autocomplete="tel" placeholder="예: 010-0000-0000" maxlength="30" required>
+        </label>
+        <p id="registration-review">관리자는 가입 승인과 권한 부여를 위해 Google 이메일과 입력한 정보를 확인합니다.</p>
+        <button class="primary" type="submit" aria-describedby="registration-review">사용신청</button>
+      </fieldset>
+      <p class="message error" id="registration-status" role="alert"></p>
+    </form>
   </section>
   <div id="tracker" hidden>
     <div class="heading">
@@ -112,7 +136,17 @@
       <div class="table-shell"><table class="completion-table record-table" aria-labelledby="daily-title"><colgroup><col class="date-col"><col class="kind-col"><col><col class="quantity-col"><col class="manage-col"></colgroup><thead><tr><th scope="col">완료일</th><th scope="col">구분</th><th scope="col">홀 번호</th><th scope="col">수량</th><th scope="col" id="record-actions-title" hidden>관리</th></tr></thead><tbody id="daily-records"></tbody></table></div>
     </section>
   </div>
-  <section class="board inputs approvals" id="approvals" aria-labelledby="approvals-title" hidden><div class="section-title"><h2 id="approvals-title">계정 승인</h2><button type="button" id="refresh-users">새로고침</button></div><div class="table-shell"><table><thead><tr><th scope="col">Google 계정</th><th scope="col">권한</th><th scope="col">변경</th></tr></thead><tbody id="users"></tbody></table></div><p id="users-status" class="message" role="status"></p></section>
+  <section class="board inputs approvals" id="approvals" aria-labelledby="approvals-title" hidden>
+    <div class="section-title">
+      <div>
+        <h2 id="approvals-title">계정 승인 및 권한</h2>
+        <p>신규 가입자는 권한을 선택한 뒤 승인하세요. 조회 전용은 도면과 타설 기록을 볼 수 있고, 편집 가능은 타설 기록을 추가하고 수정할 수 있습니다.</p>
+      </div>
+      <button type="button" id="refresh-users">새로고침</button>
+    </div>
+    <div class="table-shell"><table><thead><tr><th scope="col">신청자 정보</th><th scope="col">권한</th><th scope="col">변경</th></tr></thead><tbody id="users"></tbody></table></div>
+    <p id="users-status" class="message" role="status"></p>
+  </section>
 </main>
 <dialog id="confirm" aria-labelledby="confirm-title"><h2 id="confirm-title">기존 타설완료일 수정</h2><p id="changes"></p><form method="dialog" class="action-row"><button value="cancel">취소</button><button class="primary" value="apply">수정 저장</button></form></dialog>
 <script src="./completions.js" defer></script>
