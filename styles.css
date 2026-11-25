@@ -40,15 +40,17 @@ h1 { font-size: clamp(25px, 2.3vw, 32px); font-weight: 700; line-height: 1.25; l
 h2 { font-size: 16px; letter-spacing: -.025em; }
 h3 { font-size: 14px; }
 p { color: var(--muted); }
-.site-header { color: #edf5f7; background: #173944; }
-.mast { max-width: 1800px; margin: auto; min-height: 64px; padding: 12px 28px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.brand { font-weight: 650; white-space: nowrap; }
-.account { display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex-wrap: wrap; font-size: 12px; }
-#account-label { overflow-wrap: anywhere; }
-.account button { min-height: 34px; font-size: 12px; }
-#section-nav { display: flex; flex-wrap: wrap; gap: 5px; }
-#section-nav button { color: #edf5f7; background: transparent; border-color: #6f929b; }
-#section-nav button[aria-pressed=true] { background: #edf5f7; color: #173944; }
+.site-header { position: sticky; top: 0; z-index: 10; background: #fff; border-bottom: 1px solid var(--line); }
+.mast { max-width: 1800px; margin: auto; min-height: 56px; padding: 4px 28px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.brand { flex: 0 0 auto; font-size: 16px; font-weight: 700; letter-spacing: -.035em; white-space: nowrap; }
+button.brand, button.header-action { min-height: 44px; padding: 0 2px; border: 0; background: transparent; }
+button.brand:hover, button.header-action:not(:disabled):hover { text-decoration: underline; text-underline-offset: 3px; }
+.account { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.account-identity { display: grid; gap: 1px; min-width: 0; max-width: 260px; padding-right: 10px; border-right: 1px solid var(--line); text-align: right; font-size: 12px; line-height: 1.35; }
+.account-identity > * { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.account-identity span { color: var(--muted); }
+.header-action { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 4px; color: var(--teal); font-size: 12px; }
+#pending-count { min-width: 16px; padding: 0 4px; border-radius: 999px; background: var(--soft); font-size: 11px; text-align: center; }
 main { width: 100%; max-width: 1800px; margin: auto; padding: 26px 28px 36px; }
 .heading { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
 .subtitle { margin-top: 6px; }
@@ -165,6 +167,12 @@ td { padding: 8px 9px; border-bottom: 1px solid #e6edf1; vertical-align: top; fo
 .record-more { font-size: 12px; min-height: 30px; padding: 3px 7px; }
 .record-editor .section-title { align-items: flex-start; }
 
+.mypage { max-width: 840px; margin-inline: auto; }
+.mypage-profile { display: flex; flex-wrap: wrap; gap: 6px 22px; margin: 12px 0 18px; }
+.mypage-profile > div { display: flex; gap: 6px; max-width: 100%; }
+.mypage-profile dt { flex: 0 0 auto; color: var(--muted); }
+.mypage-profile dd { font-weight: 650; overflow-wrap: anywhere; }
+#approvals-count:not(:empty) { margin-block: 8px; font-size: 12px; }
 .approvals td:first-child { overflow-wrap: anywhere; }
 .approvals th:last-child { width: 90px; }
 .approvals .message { margin-top: 14px; }
@@ -293,7 +301,7 @@ dialog p { margin-top: 9px; overflow-wrap: anywhere; }
 dialog .action-row { justify-content: flex-end; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
 @media (max-width: 1000px) {
-  .mast { padding-inline: 18px; flex-wrap: wrap; }
+  .mast { padding-inline: 18px; }
   main { padding: 22px 18px 30px; }
   .workspace { grid-template-columns: minmax(0, 1fr) 250px; }
   .drawing-toolbar { align-items: flex-start; flex-direction: column; gap: 10px; }
@@ -301,8 +309,11 @@ dialog .action-row { justify-content: flex-end; }
   .inspector { padding: 16px; }
 }
 @media (max-width: 700px) {
-  .mast { padding: 12px 14px; gap: 10px; }
-  .account { justify-content: flex-start; gap: 8px; }
+  .mast { padding-inline: 8px; gap: 5px; }
+  .brand { font-size: 13px; }
+  .account { gap: 5px; }
+  .account-identity { padding-right: 5px; font-size: 11px; }
+  .account .header-action { gap: 2px; font-size: 11px; }
   main { padding: 18px 10px 24px; }
   .heading { flex-direction: column; align-items: flex-start; gap: 8px; margin-bottom: 16px; }
   .subtitle { font-size: 13px; }
@@ -358,6 +369,6 @@ dialog .action-row { justify-content: flex-end; }
   .approvals table { min-width: 320px; }
 }
 @media (pointer: coarse) {
-  button, .account button, #clear-selection, .record-hole { min-height: 44px; }
+  button, #clear-selection, .record-hole { min-height: 44px; }
   .map-navigation button { min-width: 40px; }
 }

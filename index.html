@@ -16,13 +16,12 @@
 <body class="gate-open login-open">
 <header class="site-header" id="site-header" hidden>
   <div class="mast">
-    <span class="brand">토목공사 공정현황</span>
+    <span class="brand" id="header-title">토목공사 공정현황</span>
+    <button class="brand" type="button" id="tracker-menu" aria-controls="tracker" hidden>토목공사 공정현황</button>
     <div class="account" id="account" hidden>
-      <nav id="section-nav" aria-label="관리 메뉴" hidden>
-        <button type="button" id="tracker-menu" aria-controls="tracker" aria-pressed="true">공정현황</button>
-        <button type="button" id="approvals-menu" hidden aria-controls="approvals" aria-pressed="false">계정 승인 및 권한 <span id="pending-count" hidden></span></button>
-      </nav>
-      <span id="account-label"></span><button type="button" id="logout">로그아웃</button>
+      <div class="account-identity"><strong id="account-name"></strong><span id="account-company"></span></div>
+      <button class="header-action" type="button" id="mypage-menu" aria-controls="mypage" hidden>마이페이지<span id="pending-count" hidden></span></button>
+      <button class="header-action" type="button" id="logout">로그아웃</button>
     </div>
   </div>
 </header>
@@ -138,16 +137,25 @@
       <div class="table-shell"><table class="completion-table record-table" aria-labelledby="daily-title"><colgroup><col class="date-col"><col class="kind-col"><col><col class="quantity-col"><col class="manage-col"></colgroup><thead><tr><th scope="col">완료일</th><th scope="col">구분</th><th scope="col">홀 번호</th><th scope="col">수량</th><th scope="col" id="record-actions-title" hidden>관리</th></tr></thead><tbody id="daily-records"></tbody></table></div>
     </section>
   </div>
-  <section class="board inputs approvals" id="approvals" aria-labelledby="approvals-title" hidden>
-    <div class="section-title">
-      <div>
-        <h2 id="approvals-title">계정 승인 및 권한</h2>
-        <p>신규 가입자는 권한을 선택한 뒤 승인하세요. 조회 전용은 도면과 타설 기록을 볼 수 있고, 편집 가능은 타설 기록을 추가하고 수정할 수 있습니다.</p>
+  <section class="mypage" id="mypage" aria-labelledby="mypage-title" hidden>
+    <h1 id="mypage-title">마이페이지</h1>
+    <dl class="mypage-profile">
+      <div><dt>사용자명</dt><dd id="profile-name"></dd></div>
+      <div><dt>회사명</dt><dd id="profile-company"></dd></div>
+      <div><dt>권한</dt><dd id="profile-role"></dd></div>
+    </dl>
+    <section class="board inputs approvals" id="approvals" aria-labelledby="approvals-title" hidden>
+      <div class="section-title">
+        <div>
+          <h2 id="approvals-title">계정 승인 및 권한 설정</h2>
+          <p>신규 가입자는 권한을 선택한 뒤 승인하세요. 조회 전용은 도면과 타설 기록을 볼 수 있고, 편집 가능은 타설 기록을 추가하고 수정할 수 있습니다.</p>
+        </div>
+        <button class="header-action" type="button" id="refresh-users">새로고침</button>
       </div>
-      <button type="button" id="refresh-users">새로고침</button>
-    </div>
-    <div class="table-shell"><table><thead><tr><th scope="col">신청자 정보</th><th scope="col">권한</th><th scope="col">변경</th></tr></thead><tbody id="users"></tbody></table></div>
-    <p id="users-status" class="message" role="status"></p>
+      <p id="approvals-count" aria-live="polite"></p>
+      <div class="table-shell"><table><thead><tr><th scope="col">신청자 정보</th><th scope="col">권한</th><th scope="col">변경</th></tr></thead><tbody id="users"></tbody></table></div>
+      <p id="users-status" class="message" role="status"></p>
+    </section>
   </section>
 </main>
 <dialog id="confirm" aria-labelledby="confirm-title"><h2 id="confirm-title">기존 타설완료일 수정</h2><p id="changes"></p><form method="dialog" class="action-row"><button value="cancel">취소</button><button class="primary" value="apply">수정 저장</button></form></dialog>

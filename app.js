@@ -633,18 +633,26 @@ function showGate(title,text,{signIn=false,reload=false}={}) {
   $('google').hidden=!signIn;
   $('reload').hidden=!reload;
 }
-function showAdminView(approvals) {
-  $('tracker').hidden = approvals;
-  $('approvals').hidden = !approvals;
-  $('tracker-menu').setAttribute('aria-pressed', String(!approvals));
-  $('approvals-menu').setAttribute('aria-pressed', String(approvals));
-  if (!approvals) render();
+function showMainView(mypage) {
+  $('tracker').hidden = mypage;
+  $('mypage').hidden = !mypage;
+  const active = mypage ? 'mypage-menu' : 'tracker-menu';
+  const inactive = mypage ? 'tracker-menu' : 'mypage-menu';
+  $(active).setAttribute('aria-current', 'page');
+  $(inactive).removeAttribute('aria-current');
+  if (mypage) {
+    if (user.role === 'admin') loadUsers();
+  } else {
+    render();
+  }
 }
-$('tracker-menu').onclick = () => showAdminView(false);
-$('approvals-menu').onclick = () => {
-  if (user?.role !== 'admin') return;
-  showAdminView(true);
-  loadUsers();
+$('tracker-menu').onclick = () => {
+  showMainView(false);
+  window.scrollTo(0, 0);
+};
+$('mypage-menu').onclick = () => {
+  showMainView(true);
+  window.scrollTo(0, 0);
 };
 async function loadUsers() {
   const request = ++usersRequest;
@@ -656,7 +664,9 @@ async function loadUsers() {
     if (request !== usersRequest) return false;
     const pendingCount = data.users.filter(account => account.role === 'pending').length;
     $('pending-count').hidden = !pendingCount;
-    $('pending-count').textContent = `(${pendingCount})`;
+    $('pending-count').textContent = pendingCount;
+    $('pending-count').setAttribute('aria-label', `승인 대기 ${pendingCount}건`);
+    $('approvals-count').textContent = `승인 대기 ${pendingCount}건`;
     users.replaceChildren();
     for (const account of data.users) {
       const row=users.insertRow();
@@ -685,6 +695,7 @@ async function loadUsers() {
       row.insertCell().append(role);
       const apply=document.createElement('button');
       apply.type = 'button';
+      apply.className = 'header-action';
       function updateAction() {
         apply.disabled = role.value === account.role;
         apply.textContent = awaitingApproval
@@ -724,7 +735,6 @@ async function loadUsers() {
 function showPendingApproval() {
   $('registration').hidden = true;
   $('gate').hidden = false;
-  $('account-label').textContent = `${user.email} · ${roleName.pending}`;
   showGate('관리자 승인 대기', '권한이 부여되면 다시 확인을 누르세요.', {reload:true});
 }
 $('registration-form').onsubmit = async event => {
@@ -796,13 +806,20 @@ async function load() {
     }
     $('site-header').hidden=false;
     $('account').hidden=false;
-    $('account-label').textContent=`${user.email} · ${roleName[user.role]}`;
+    const name = user.applicant || user.email;
+    const company = user.company || '미등록';
+    $('account-name').textContent = name;
+    $('account-name').title = name;
+    $('account-company').textContent = company;
+    $('account-company').title = company;
+    $('profile-name').textContent = name;
+    $('profile-company').textContent = company;
+    $('profile-role').textContent = roleName[user.role];
     if (user.role === 'pending') {
       if (user.needsRegistration) {
         document.body.classList.remove('login-open');
         $('gate').hidden = true;
         $('registration-email').textContent = user.email;
-        $('account-label').textContent = `${user.email} · 사용신청`;
         $('registration').hidden = false;
       } else {
         showPendingApproval();
@@ -820,18 +837,19 @@ async function load() {
     $('total').textContent=holes.length;
     $('gate').hidden=true;
     document.body.classList.remove('gate-open', 'login-open');
-    $('tracker').hidden=false;
+    $('header-title').hidden = true;
+    $('tracker-menu').hidden = false;
+    $('mypage-menu').hidden = false;
     if (editableRoles.has(user.role)) {
       $('new-record').hidden=false;
       $('record-actions-title').hidden=false;
       addRow();
     }
     if (user.role==='admin') {
-      $('section-nav').hidden=false;
-      $('approvals-menu').hidden=false;
+      $('approvals').hidden = false;
       loadUsers();
     }
-    render();
+    showMainView(false);
   } catch (error) {
     showGate('현황을 불러오지 못했습니다.',error.message,{reload:true});
   }
