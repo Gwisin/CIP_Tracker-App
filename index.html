@@ -76,19 +76,11 @@
       </dl>
     </div>
     <div class="dashboard-layout">
-      <section class="drawing board" aria-labelledby="drawing-title">
+      <section class="drawing board" aria-label="CIP 평면도">
         <div class="drawing-toolbar">
-          <h2 id="drawing-title">시공현황</h2>
           <form id="hole-search" role="search" aria-label="도면에서 홀 찾기" novalidate>
             <label class="sr-only" for="hole-query">홀 번호</label><input id="hole-query" placeholder="홀 번호 검색 · 예: 213-1" autocomplete="off" aria-describedby="search-message"><button type="submit">찾기</button>
           </form>
-        </div>
-        <div class="map-options">
-          <div class="filters">
-            <label>구분 <select id="map-kind"><option value="all">전체</option><option value="h">H파일</option><option value="cip">철근망</option></select></label>
-            <label>상태 <select id="map-status"><option value="all">전체</option><option value="done">타설 완료</option><option value="pending">미등록</option></select></label>
-            <output id="map-count" aria-live="polite"></output>
-          </div>
           <p id="search-message" class="message" role="status"></p>
         </div>
         <div class="map-wrap">
@@ -106,7 +98,7 @@
             </div>
           </div>
         </div>
-        <div class="map-footer"><div class="legend"><span><i class="swatch h-file" aria-hidden="true"></i>H파일</span><span><i class="swatch" aria-hidden="true"></i>철근망</span><span><i class="swatch done" aria-hidden="true"></i>H파일 타설 완료</span><span><i class="swatch done cip-completion" aria-hidden="true"></i>철근망 타설 완료</span></div><span id="hint">휠 또는 두 손가락으로 확대·축소</span></div>
+        <div class="map-footer"><div class="legend"><span><i class="swatch h-file" aria-hidden="true"></i>H파일</span><span><i class="swatch" aria-hidden="true"></i>철근망</span><span><i class="swatch done" aria-hidden="true"></i>H파일 타설 완료</span><span><i class="swatch done cip-completion" aria-hidden="true"></i>철근망 타설 완료</span></div></div>
       </section>
       <div class="dashboard-sidebar">
         <aside class="inspector board" aria-labelledby="selected-title">
@@ -122,7 +114,6 @@
               <div class="memo-actions"><p id="memo-message" class="message" role="status"></p><button id="save-memo" class="primary" type="submit">메모 저장</button></div>
             </form>
             <dl id="memo-readonly" class="memo-readonly" hidden><div><dt>메모</dt><dd id="memo-text"></dd></div></dl>
-            <div class="inspector-help" id="bulk-help"><h3>여러 홀을 한 번에 기록하려면</h3><p>아래 ‘시공현황’에서 ‘기록 추가’를 눌러 엑셀에서 붙여넣으세요.</p></div>
           </div>
         </aside>
         <aside class="board history-panel" aria-labelledby="history-title">

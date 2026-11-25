@@ -21,6 +21,7 @@
   --done-edge: #ad202a;
   --done-label-fill: #fff0f1;
   --done-label-ink: #8d1721;
+  --done-number-ink: #fff;
   --h-selected: #006f78;
 }
 * { box-sizing: border-box; }
@@ -73,14 +74,9 @@ main { width: 100%; max-width: 1800px; margin: auto; padding: 26px 28px 36px; }
 .dashboard-layout { margin-bottom: 16px; }
 .dashboard-layout .board { margin-bottom: 0; }
 .drawing { min-width: 0; overflow: hidden; }
-.drawing-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 15px; padding: 14px 18px 10px; }
+.drawing-toolbar { padding: 14px 18px; }
 #hole-search { display: flex; gap: 7px; width: min(100%, 340px); }
 #hole-search input { flex: 1; }
-.map-options { padding: 0 18px 12px; }
-.filters { display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
-.filters label { display: flex; align-items: center; gap: 7px; color: var(--muted); }
-.filters select { width: auto; min-height: 33px; padding-block: 4px; }
-#map-count { color: var(--muted); font-size: var(--app-text-small, 12px); margin-left: auto; }
 #search-message:not(:empty) { margin-top: 8px; }
 .map-wrap {
   position: relative;
@@ -110,16 +106,17 @@ main { width: 100%; max-width: 1800px; margin: auto; padding: 26px 28px 36px; }
 #zoom-in, #zoom-out { min-width: 36px; font-size: 19px; padding: 2px 7px; }
 #zoom-value { font-size: var(--app-text-small, 12px); font-variant-numeric: tabular-nums; color: var(--muted); background: #fff; padding: 7px; border-radius: 4px; min-width: 50px; text-align: center; }
 #overview[aria-pressed=true] { color: var(--teal); border-color: #83adb7; }
-.map-footer { display: flex; align-items: center; justify-content: space-between; gap: 8px 16px; flex-wrap: wrap; min-height: 44px; padding: 10px 16px; font-size: var(--app-text-small, 11px); color: var(--muted); }
+.map-footer { display: flex; align-items: center; min-height: 44px; padding: 10px 16px; font-size: var(--app-text-small, 11px); color: var(--muted); }
 .legend { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .legend span { display: inline-flex; align-items: center; gap: 5px; }
 .swatch { display: inline-block; height: 11px; width: 11px; flex-shrink: 0; border: 1px solid #789092; border-radius: 50%; background: #fff; }
 .swatch.h-file { border: 1px solid var(--h-edge); background: var(--h-fill); }
 .cip-completion {
-  --done-fill: #b54c0e;
-  --done-edge: #833700;
-  --done-label-fill: #fff1e5;
-  --done-label-ink: #783000;
+  --done-fill: #38bdf8;
+  --done-edge: #075985;
+  --done-label-fill: #e0f2fe;
+  --done-label-ink: #0c4a6e;
+  --done-number-ink: var(--done-label-ink);
 }
 .swatch.done { background: var(--done-fill); border-color: var(--done-edge); }
 .inspector { min-width: 0; padding: 18px 20px; }
@@ -148,9 +145,6 @@ main { width: 100%; max-width: 1800px; margin: auto; padding: 26px 28px 36px; }
 .message { font-size: var(--app-text-small, 12px); overflow-wrap: anywhere; }
 .message.error { color: #a63329; }
 .message.ok { color: #176957; }
-.inspector-help { margin-top: 24px; padding-top: 17px; border-top: 1px solid var(--line); }
-.inspector-help h3 { margin-bottom: 5px; }
-.inspector-help p { font-size: var(--app-text-small, 12px); }
 .inputs { padding: 18px; }
 .section-title { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-bottom: 14px; }
 .section-title p { font-size: var(--app-text-small, 12px); margin-top: 4px; max-width: 75ch; }
@@ -309,8 +303,6 @@ dialog .action-row { justify-content: flex-end; }
 @media (max-width: 1000px) {
   .mast { padding-inline: 18px; }
   main { padding: 22px 18px 30px; }
-  .drawing-toolbar { align-items: flex-start; flex-direction: column; gap: 10px; }
-  #hole-search { width: 100%; }
   .inspector { padding: 16px; }
 }
 @media (max-width: 700px) {
@@ -325,10 +317,8 @@ dialog .action-row { justify-content: flex-end; }
   .metrics > div { gap: 6px; flex-wrap: wrap; }
   .metrics > div + div { padding-left: 0; border-left: 0; }
   .drawing { border-bottom: 0; border-radius: 8px 8px 0 0; }
-  .drawing-toolbar { padding: 14px 12px 10px; }
-  .map-options { padding: 0 12px 12px; }
-  .filters { gap: 9px; }
-  #map-count { margin-left: 0; }
+  .drawing-toolbar { padding: 14px 12px; }
+  #hole-search { width: 100%; }
   .map-wrap { height: 360px; }
   .map-navigation { gap: 4px; padding-inline: 8px; }
   .map-navigation button { padding-inline: 8px; }
@@ -343,8 +333,6 @@ dialog .action-row { justify-content: flex-end; }
   .hole-facts { margin: 8px 0 14px; padding-bottom: 12px; }
   .hole-facts > div { display: flex; justify-content: space-between; gap: 8px; }
   .hole-facts dt { margin: 0; }
-  .inspector-help { margin-top: 16px; padding-top: 12px; }
-  .inspector-help p { max-width: 65ch; }
   .inputs { padding: 14px 12px; }
   #entries { padding: 14px; }
   .section-title { align-items: flex-start; flex-wrap: wrap; }
