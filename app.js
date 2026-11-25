@@ -42,12 +42,6 @@ function project(hole) {
 function numberFits(hole,size) {
   return size*1.75 >= hole.id.length*6+3;
 }
-function matchesFilters(hole) {
-  const kind = $('map-kind').value;
-  const status = $('map-status').value;
-  return (kind === 'all' || typeOf(hole.id) === kind) &&
-    (status === 'all' || Boolean(records[hole.id]) === (status === 'done'));
-}
 function renderMetrics() {
   const completed = Object.keys(records);
   for (const kind of ['h', 'cip']) {
@@ -78,7 +72,6 @@ function renderInspector() {
   $('memo-form').hidden = !canEdit;
   $('memo-readonly').hidden = canEdit;
   $('memo-text').textContent = memos.get(hole.id)?.memo || '등록된 메모 없음';
-  $('bulk-help').hidden = !canEdit;
   const memo = $('hole-memo');
   const isSaving = savingMemos.has(hole.id);
   memo.readOnly = isSaving;
@@ -92,10 +85,6 @@ function renderInspector() {
 function selectHole(id, {zoom = false} = {}) {
   if (saving || !byId.has(id)) return;
   state.selected = id;
-  if (!matchesFilters(byId.get(id))) {
-    $('map-kind').value = 'all';
-    $('map-status').value = 'all';
-  }
   if (zoom && viewport) {
     state.x = byId.get(id).x;
     state.y = byId.get(id).y;
@@ -122,15 +111,16 @@ function render() {
     const done = Boolean(records[hole.id]);
     const selected = state.selected === hole.id;
     const hFile = typeOf(hole.id)==='h';
-    const outline = selected ? 1.75 : done ? 1.1 : detail ? (hFile ? 1.2 : .8) : .55;
+    const cipCompletion = done && !hFile;
+    const completionClass = cipCompletion ? 'cip-completion' : '';
+    const outline = selected ? 1.75 : done ? (cipCompletion && !detail ? .7 : 1.1) : detail ? (hFile ? 1.2 : .8) : .55;
     const fill = done ? 'var(--done-fill)' : hFile ? 'var(--h-fill)' : '#fdfefe';
     const stroke = selected ? 'var(--teal)' : done ? 'var(--done-edge)' : hFile ? 'var(--h-edge)' : '#698589';
-    const matches = matchesFilters(hole);
     if (selected) draw(scene, 'circle', {cx:hole.x, cy:hole.y, r:size+5, fill:'none', stroke:'var(--teal)', 'stroke-width':2, 'pointer-events':'none'});
-    const node = draw(scene,'circle',{cx:hole.x,cy:hole.y,r:size*.95,fill,stroke,'stroke-width':outline,class:done && !hFile ? 'cip-completion' : '', 'data-hole':hole.id,opacity:matches||selected?(done||selected||detail?1:.55):.16});
+    const node = draw(scene,'circle',{cx:hole.x,cy:hole.y,r:size*.95,fill,stroke,'stroke-width':outline,class:completionClass,'data-hole':hole.id,opacity:done||selected||detail?1:.55});
     draw(node,'title',{},`${hole.id} · ${records[hole.id] || '미등록'}`);
-    if (detail && done && numberFits(hole,size) && (matches || selected)) {
-      draw(scene,'text',{x:hole.x,y:hole.y+4,'text-anchor':'middle','font-size':11,'font-weight':700,fill:'#fff','pointer-events':'none','data-number':hole.id},hole.id);
+    if (detail && done && numberFits(hole,size)) {
+      draw(scene,'text',{x:hole.x,y:hole.y+4,'text-anchor':'middle','font-size':11,'font-weight':700,fill:'var(--done-number-ink)',class:completionClass,'pointer-events':'none','data-number':hole.id},hole.id);
     }
   }
   const occupied = [];
@@ -138,7 +128,6 @@ function render() {
   for (const hole of labelHoles) {
     const date = records[hole.id];
     const selected = state.selected === hole.id;
-    if (!matchesFilters(hole) && !selected) continue;
     let label;
     if (detail && date) {
       label = numberFits(hole,size) ? fmtDate(date) : `${hole.id} · ${fmtDate(date)}`;
@@ -171,11 +160,8 @@ function render() {
   const choice = byId.get(state.selected);
   $('selection').classList.toggle('visible',Boolean(choice));
   $('selection').textContent = choice ? `${choice.id} · ${typeOf(choice.id)==='h'?'H파일':'철근망'} · ${records[choice.id] || '미등록'}` : '';
-  $('map-count').textContent = `${holes.filter(matchesFilters).length}개 홀 강조`;
   $('zoom-value').textContent = Math.round(state.zoom*100)+'%';
   $('overview').setAttribute('aria-pressed', String(state.zoom === 1 && state.x === overview.x && state.y === overview.y));
-  const hint = detail?'홀 선택 시 전체 날짜':`기준 번호 ${step}번 간격`;
-  $('hint').textContent = hint+' · 휠 또는 두 손가락으로 확대·축소';
   renderInspector();
 }
 function setView(detail) {
@@ -226,11 +212,6 @@ $('hole-search').onsubmit=event=>{
   selectHole(id, {zoom:true});
   $('search-message').className = 'message';
   $('search-message').textContent = `${id}번 홀을 선택했습니다. 홀 상세에서 완료일과 메모를 확인하세요.`;
-};
-for (const id of ['map-kind', 'map-status']) $(id).onchange=()=>{
-  if (saving) return;
-  if (state.selected && !matchesFilters(byId.get(state.selected))) state.selected = null;
-  render();
 };
 function mapPoint(event) {
   const box=map.getBoundingClientRect();
