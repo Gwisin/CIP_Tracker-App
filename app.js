@@ -28,6 +28,7 @@ let dailyLimit = dailyPageSize;
 let saving = false;
 let editSnapshot = [];
 const entries = $('rows');
+let historyLimit = 8;
 let usersRequest = 0;
 
 function draw(layer, tag, attrs, label) {
@@ -357,7 +358,21 @@ function applyRecords(rows) {
     revisions.set(item.id,item.revision);
   }
   renderDailyRecords();
+  renderHistory();
   renderMetrics();
+}
+function recordHoleButton(id, label) {
+  const button = document.createElement('button');
+  button.type = 'button';
+  button.className = 'record-hole';
+  button.textContent = id;
+  button.setAttribute('aria-label', `${label} ${id} 도면에서 보기`);
+  button.onclick = () => {
+    selectHole(id, {zoom:true});
+    map.scrollIntoView({block:'center'});
+    map.focus({preventScroll:true});
+  };
+  return button;
 }
 function renderDailyRecords(appendFrom = 0) {
   const list = $('daily-records');
@@ -379,19 +394,7 @@ function renderDailyRecords(appendFrom = 0) {
       const cell = row.insertCell();
       const numbers = document.createElement('div');
       numbers.className = 'record-holes';
-      const appendHole = id => {
-        const button = document.createElement('button');
-        button.type = 'button';
-        button.className = 'record-hole';
-        button.textContent = id;
-        button.setAttribute('aria-label', `${label} ${id} 도면에서 보기`);
-        button.onclick = () => {
-          selectHole(id, {zoom:true});
-          map.scrollIntoView({block:'center'});
-          map.focus({preventScroll:true});
-        };
-        numbers.append(button);
-      };
+      const appendHole = id => numbers.append(recordHoleButton(id, label));
       ids.slice(0, 8).forEach(appendHole);
       if (ids.length > 8) {
         const more = document.createElement('button');
@@ -442,6 +445,41 @@ function renderDailyRecords(appendFrom = 0) {
     cell.textContent = dateFilter || kindFilter !== 'all' ? '선택한 조건의 기록이 없습니다. 필터를 변경하세요.' : '등록된 타설 완료 기록이 없습니다. 홀을 선택해 완료일을 기록하세요.';
   }
 }
+function renderHistory() {
+  const groups = CompletionTools.group(records);
+  $('history-count').textContent = `${groups.length}일 · ${Object.keys(records).length}개 홀`;
+  const list = $('history-list');
+  list.replaceChildren();
+  for (const {date, total, h, cip} of groups.slice(0, historyLimit)) {
+    const card = document.createElement('section');
+    card.className = 'history-card';
+    const heading = document.createElement('h3');
+    heading.textContent = `${date} · ${total}개`;
+    card.append(heading);
+    for (const [label, ids] of [['H파일', h], ['철근망', cip]]) {
+      if (!ids.length) continue;
+      const summary = document.createElement('p');
+      summary.textContent = `${label} ${ids.length}개`;
+      const numbers = document.createElement('div');
+      numbers.className = 'record-holes';
+      numbers.append(...ids.map(id => recordHoleButton(id, label)));
+      card.append(summary, numbers);
+    }
+    list.append(card);
+  }
+  if (!groups.length) list.textContent = '등록된 타설기록이 없습니다.';
+  const remaining = groups.length - historyLimit;
+  $('history-more').hidden = remaining <= 0;
+  $('history-more').textContent = `더보기 · ${Math.max(0, remaining)}일 남음`;
+}
+$('history-more').onclick = () => {
+  const list = $('history-list');
+  const top = list.scrollTop;
+  historyLimit += 8;
+  renderHistory();
+  list.scrollTop = top;
+  list.scrollBy({top:240, behavior:'smooth'});
+};
 function openRecordEditor(ids, date, label) {
   if (saving || !editableRoles.has(user?.role) || $('confirm').open) return;
   // Keep the revisions from when editing starts, even if another form saves later.

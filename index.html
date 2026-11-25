@@ -64,17 +64,19 @@
     </form>
   </section>
   <div id="tracker" hidden>
-    <div class="heading">
-      <h1>CIP 공정현황</h1>
-      <p class="overall">전체 <span id="total"></span>개 중 <strong id="completed" aria-live="polite"></strong>개 완료</p>
+    <div class="tracker-summary">
+      <div class="heading">
+        <h1>CIP 공정현황</h1>
+        <p class="overall">전체 <span id="total"></span>개 중 <strong id="completed" aria-live="polite"></strong>개 완료</p>
+      </div>
+      <dl class="metrics" aria-label="공종별 타설 현황">
+        <div><dt><i class="swatch h-file" aria-hidden="true"></i>H파일</dt><dd><strong id="h-completed">0</strong><span> / <span id="h-total">397</span>개 완료</span></dd></div>
+        <div><dt><i class="swatch" aria-hidden="true"></i>철근망</dt><dd><strong id="cip-completed">0</strong><span> / <span id="cip-total">669</span>개 완료</span></dd></div>
+        <div><dt>미등록</dt><dd><strong id="remaining">0</strong><span>개 홀</span></dd></div>
+      </dl>
     </div>
-    <dl class="metrics" aria-label="공종별 타설 현황">
-      <div><dt><i class="swatch h-file" aria-hidden="true"></i>H파일</dt><dd><strong id="h-completed">0</strong><span> / <span id="h-total">397</span>개 완료</span></dd></div>
-      <div><dt><i class="swatch" aria-hidden="true"></i>철근망</dt><dd><strong id="cip-completed">0</strong><span> / <span id="cip-total">669</span>개 완료</span></dd></div>
-      <div><dt>미등록</dt><dd><strong id="remaining">0</strong><span>개 홀</span></dd></div>
-    </dl>
-    <div class="workspace board">
-      <section class="drawing" aria-labelledby="drawing-title">
+    <div class="dashboard-layout">
+      <section class="drawing board" aria-labelledby="drawing-title">
         <div class="drawing-toolbar">
           <h2 id="drawing-title">시공현황</h2>
           <form id="hole-search" role="search" aria-label="도면에서 홀 찾기" novalidate>
@@ -106,21 +108,28 @@
         </div>
         <div class="map-footer"><div class="legend"><span><i class="swatch h-file" aria-hidden="true"></i>H파일</span><span><i class="swatch" aria-hidden="true"></i>철근망</span><span><i class="swatch done" aria-hidden="true"></i>H파일 타설 완료</span><span><i class="swatch done cip-completion" aria-hidden="true"></i>철근망 타설 완료</span></div><span id="hint">휠 또는 두 손가락으로 확대·축소</span></div>
       </section>
-      <aside class="inspector" aria-labelledby="selected-title">
-        <div class="inspector-heading"><h2 id="selected-title">홀 상세</h2><button type="button" id="clear-selection" aria-label="홀 선택 해제" hidden>해제</button></div>
-        <div id="selection-empty" class="empty-selection"><span class="empty-mark" aria-hidden="true">⌖</span><h3>확인할 홀을 선택하세요.</h3><p>도면의 홀을 누르거나 번호로 검색하면 완료일을 확인할 수 있습니다.</p></div>
-        <div id="hole-info" hidden>
-          <p class="eyebrow" id="selected-kind"></p><h3 class="hole-number" id="selected-number"></h3>
-          <p class="status-badge" id="selected-status"></p>
-          <dl class="hole-facts"><div><dt>타설 완료일</dt><dd id="selected-date"></dd></div></dl>
-          <form id="single-form" novalidate hidden>
-            <fieldset id="single-fields"><label for="single-date">타설 완료일 입력</label><input id="single-date" type="date" required aria-describedby="single-message"><button class="primary" type="submit">완료일 저장</button></fieldset>
-          </form>
-          <p id="viewer-note" class="inspector-note" hidden>조회 전용 계정입니다. 완료일 변경은 수정 권한이 있는 계정에서 할 수 있습니다.</p>
-          <p id="single-message" class="message" role="status"></p>
-          <div class="inspector-help" id="bulk-help"><h3>여러 홀을 한 번에 기록하려면</h3><p>아래 ‘타설 기록 관리’에서 기록 추가를 눌러 완료일, 구분, 홀 번호를 붙여넣으세요.</p></div>
+      <div class="dashboard-sidebar">
+        <aside class="inspector board" aria-labelledby="selected-title">
+          <div class="inspector-heading"><h2 id="selected-title">홀 상세</h2><button type="button" id="clear-selection" aria-label="홀 선택 해제" hidden>해제</button></div>
+          <div id="selection-empty" class="empty-selection"><span class="empty-mark" aria-hidden="true">⌖</span><h3>확인할 홀을 선택하세요.</h3><p>도면의 홀을 누르거나 번호로 검색하면 완료일을 확인할 수 있습니다.</p></div>
+          <div id="hole-info" hidden>
+            <p class="eyebrow" id="selected-kind"></p><h3 class="hole-number" id="selected-number"></h3>
+            <p class="status-badge" id="selected-status"></p>
+            <dl class="hole-facts"><div><dt>타설 완료일</dt><dd id="selected-date"></dd></div></dl>
+            <form id="single-form" novalidate hidden>
+              <fieldset id="single-fields"><label for="single-date">타설 완료일 입력</label><input id="single-date" type="date" required aria-describedby="single-message"><button class="primary" type="submit">완료일 저장</button></fieldset>
+            </form>
+            <p id="viewer-note" class="inspector-note" hidden>조회 전용 계정입니다. 완료일 변경은 수정 권한이 있는 계정에서 할 수 있습니다.</p>
+            <p id="single-message" class="message" role="status"></p>
+            <div class="inspector-help" id="bulk-help"><h3>여러 홀을 한 번에 기록하려면</h3><p>아래 ‘타설 기록 관리’에서 기록 추가를 눌러 완료일, 구분, 홀 번호를 붙여넣으세요.</p></div>
+          </div>
+        </aside>
+        <aside class="board history-panel" aria-labelledby="history-title">
+          <div class="section-title"><div><h2 id="history-title">타설기록 히스토리</h2><p id="history-count"></p></div><a href="#record-manager">전체 관리</a></div>
+          <div id="history-list" class="history-list" tabindex="0" aria-label="최근 타설기록, 스크롤해서 더 보기"></div>
+          <button type="button" id="history-more" aria-controls="history-list" hidden>더보기</button>
+        </aside>
         </div>
-      </aside>
     </div>
     <section class="board inputs history" id="record-manager" aria-labelledby="daily-title">
       <div class="section-title"><div><h2 id="daily-title">타설 기록 관리</h2><p id="daily-count" aria-live="polite"></p></div><button type="button" class="primary" id="new-record" aria-expanded="false" aria-controls="entries" hidden>＋ 기록 추가 · 엑셀 붙여넣기</button></div>
