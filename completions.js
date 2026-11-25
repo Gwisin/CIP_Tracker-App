@@ -11,20 +11,27 @@ function normalizeCompletionDate(value) {
   return date && isCompletionDate(date) ? date : '';
 }
 
-const completionFields = ['date', 'kind', 'hole'];
-const pastedKinds = new Map([['h파일', 'h'], ['철근망', 'cip']]);
+const completionFields = ['date', 'hole'];
+const completionType = id => id.includes('-') ? 'cip' : 'h';
 const CompletionTools = {
   parsePaste(text, startColumn, availableRows, limit = 100) {
     const lines = text.replace(/^\uFEFF/, '').replace(/[\r\n]+$/, '').split(/\r\n|\n|\r/);
     const cells = lines.map(line => line.split('\t').map(value => value.trim().replace(/^"(.*)"$/, '$1').trim()));
-    if (startColumn === 0 && /^(?:타설\s*)?완료일$/.test(cells[0][0]) &&
-        cells[0][1] === '구분' && /^홀\s*번호$/.test(cells[0][2] || '')) cells.shift();
+    const [dateHeader, secondHeader, thirdHeader] = cells[0];
+    const hasDateHeader = /^(?:타설\s*)?완료일$/.test(dateHeader);
+    const legacyHeader = startColumn === 0 && hasDateHeader && secondHeader === '구분' &&
+      /^홀\s*번호$/.test(thirdHeader || '');
+    if (startColumn === 0 && hasDateHeader && (legacyHeader || /^홀\s*번호$/.test(secondHeader || ''))) cells.shift();
     if (cells.length > availableRows) return {error: `한 번에 최대 ${limit}개 행을 입력할 수 있습니다.`};
     const rows = [];
-    for (const [index, values] of cells.entries()) {
+    for (const [index, cellsInRow] of cells.entries()) {
       const fail = reason => ({error: `붙여넣기 ${index + 1}행: ${reason}`});
+      // Previously copied records may still have a category column.
+      const legacyRow = startColumn === 0 && cellsInRow.length === 3 &&
+        (legacyHeader || /^(?:h\s*파일|철근망)?$/i.test(cellsInRow[1]));
+      const values = legacyRow ? [cellsInRow[0], cellsInRow[2]] : cellsInRow;
       if (values.length > completionFields.length - startColumn) {
-        return fail('완료일, 구분, 홀 번호 순서와 시작 칸을 확인하세요.');
+        return fail('완료일, 홀 번호 순서와 시작 칸을 확인하세요.');
       }
       const row = {};
       for (const [offset, value] of values.entries()) {
@@ -33,10 +40,6 @@ const CompletionTools = {
           const date = normalizeCompletionDate(value);
           if (!date) return fail('완료일을 확인하세요. 예: 2026-11-19');
           row.date = date;
-        } else if (field === 'kind' && value) {
-          const kind = pastedKinds.get(value.replace(/\s/g, '').toLowerCase());
-          if (!kind) return fail('구분은 H파일 또는 철근망을 입력하세요.');
-          row.kind = kind;
         } else {
           row[field] = value;
         }
@@ -52,11 +55,9 @@ const CompletionTools = {
       const value = row.holes.trim();
       if (!value && !row.date.trim()) return;
       const date = normalizeCompletionDate(row.date);
-      if (!row.type) fail('kind', '구분을 선택하세요.');
       const ids = value.split(',').map(id => id.trim());
       for (const id of ids) {
         if (!byId.has(id)) fail('hole', `${id || '(빈 번호)'}: 도면에 있는 홀 번호를 입력하세요.`);
-        else if (row.type && row.type !== (id.includes('-') ? 'cip' : 'h')) fail('hole', `${id}: 홀 번호와 구분이 일치하지 않습니다.`);
         else if (seen.has(id)) fail('hole', `${id}: 같은 홀을 한 번만 입력하세요.`);
         seen.add(id);
         items.push({id, date, expectedRevision: revisions.get(id) || 0});
@@ -81,7 +82,7 @@ const CompletionTools = {
     for (const [id, date] of Object.entries(records)) {
       if (!dates.has(date)) dates.set(date, {date, h: [], cip: [], total: 0});
       const group = dates.get(date);
-      group[id.includes('-') ? 'cip' : 'h'].push(id);
+      group[completionType(id)].push(id);
       group.total++;
     }
     return [...dates.values()].sort((a, b) => b.date.localeCompare(a.date)).map(group => {
