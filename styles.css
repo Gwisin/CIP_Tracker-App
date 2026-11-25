@@ -1,3 +1,9 @@
+@font-face {
+  font-family: "Noto Sans KR";
+  src: url("./fonts/noto-sans-kr.woff2") format("woff2");
+  font-weight: 100 900;
+  font-display: swap;
+}
 :root {
   font-family: Pretendard, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   color: #233746;
@@ -17,6 +23,7 @@
 }
 * { box-sizing: border-box; }
 body { margin: 0; }
+body:not(.gate-open) { font-family: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif; }
 [hidden] { display: none !important; }
 button, input, select { font: inherit; }
 button { min-height: 38px; padding: 7px 12px; border: 1px solid var(--line); border-radius: 5px; background: #fff; color: var(--ink); font-weight: 600; cursor: pointer; }
@@ -35,8 +42,7 @@ h3 { font-size: 14px; }
 p { color: var(--muted); }
 .site-header { color: #edf5f7; background: #173944; }
 .mast { max-width: 1800px; margin: auto; min-height: 64px; padding: 12px 28px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.brand { display: flex; align-items: center; gap: 10px; font-weight: 650; white-space: nowrap; }
-.brand-mark { display: block; flex-shrink: 0; }
+.brand { font-weight: 650; white-space: nowrap; }
 .account { display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex-wrap: wrap; font-size: 12px; }
 #account-label { overflow-wrap: anywhere; }
 .account button { min-height: 34px; font-size: 12px; }
@@ -207,7 +213,7 @@ td { padding: 8px 9px; border-bottom: 1px solid #e6edf1; vertical-align: top; fo
 
 /* The bundled font subsets cover the text shown on the login screen. */
 @font-face {
-  font-family: "Noto Sans KR";
+  font-family: "Noto Sans KR Login";
   src: url("./fonts/noto-sans-kr-login.woff2") format("woff2");
   font-weight: 400 700;
   font-display: swap;
@@ -228,7 +234,7 @@ td { padding: 8px 9px; border-bottom: 1px solid #e6edf1; vertical-align: top; fo
   background-attachment: fixed;
 }
 .login-open .gate {
-  --login-font: "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
+  --login-font: "Noto Sans KR Login", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif;
   width: min(100%, 420px);
   padding: 40px 40px 36px;
   border: 0;
