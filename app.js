@@ -21,11 +21,14 @@ let inspectorId = null;
 let rowNumber = 0;
 const namespace = 'http://www.w3.org/2000/svg';
 const fmtDate = date => date.split('-').slice(1).map(Number).join('/');
-const typeOf = id => id.includes('-') ? 'cip' : 'h';
+const typeOf = completionType;
 const zoomLimit = 160;
 const maximumRows = 100;
 let saving = false;
 const entries = $('rows');
+const entryTitle = $('entry-title').textContent;
+const entryHelp = $('entry-help').textContent;
+let editing = null;
 let historyLimit = 8;
 let usersRequest = 0;
 
@@ -282,12 +285,11 @@ map.addEventListener('keydown',event=>{
 });
 new ResizeObserver(render).observe(map);
 
-function addRow(type='h') {
+function addRow() {
   const row=document.createElement('tr');
   const number=++rowNumber;
   row.innerHTML = `<td data-label="완료일"><input type="date" name="date" autocomplete="off" aria-label="완료일 ${number}"></td>
-    <td data-label="구분"><select name="kind" aria-label="구분 ${number}"><option value="">선택</option><option value="h">H파일</option><option value="cip">철근망</option></select></td>
-    <td data-label="홀 번호"><input name="hole" aria-label="홀 번호 ${number}" autocomplete="off" maxlength="2000"></td>
+    <td data-label="홀 번호"><input name="hole" aria-label="홀 번호 ${number}" placeholder="예: 213, 213-1" autocomplete="off" maxlength="2000"></td>
     <td><button class="remove" type="button" aria-label="행 ${number} 삭제">×</button></td>`;
   const date = row.querySelector('[name=date]');
   const today = new Date();
@@ -297,22 +299,16 @@ function addRow(type='h') {
       try { date.showPicker(); } catch { /* Keep the native date control available when opening is restricted. */ }
     }
   });
-  const select = row.querySelector('select');
-  select.value = type;
-  select.onchange = () => updateHolePlaceholder(row);
-  updateHolePlaceholder(row);
   row.querySelector('button').onclick = () => {
     if (saving) return;
     const next = row.nextElementSibling || row.previousElementSibling;
     row.remove();
-    (next || addRow()).querySelector('[name=date]').focus();
+    if (next) next.querySelector('[name=date]').focus();
+    else if (editing) $('close-entry').focus();
+    else addRow().querySelector('[name=date]').focus();
   };
   entries.append(row);
   return row;
-}
-function updateHolePlaceholder(row) {
-  const kind = row.querySelector('[name=kind]').value;
-  row.querySelector('[name=hole]').placeholder = kind === 'cip' ? '예: 215-1, 215-2' : '예: 213, 214';
 }
 function setMessage(id, text, kind = '') {
   const target = $(id);
@@ -366,7 +362,20 @@ function renderHistory() {
     card.className = 'history-card';
     const heading = document.createElement('h3');
     heading.textContent = `${date} · ${total}개`;
-    card.append(heading);
+    const header = document.createElement('div');
+    header.className = 'history-card-heading';
+    header.append(heading);
+    if (editableRoles.has(user?.role)) {
+      const edit = document.createElement('button');
+      edit.type = 'button';
+      edit.textContent = '수정';
+      edit.setAttribute('aria-label', `${date} 타설 기록 수정`);
+      edit.setAttribute('aria-haspopup', 'dialog');
+      edit.setAttribute('aria-controls', 'entries');
+      edit.onclick = () => openRecordEditor(date, [...h, ...cip]);
+      header.append(edit);
+    }
+    card.append(header);
     for (const [label, ids] of [['H파일', h], ['철근망', cip]]) {
       if (!ids.length) continue;
       const summary = document.createElement('p');
@@ -391,18 +400,54 @@ $('history-more').onclick = () => {
   list.scrollTop = top;
   list.scrollBy({top:240, behavior:'smooth'});
 };
-$('new-record').onclick = () => {
-  if (saving || !editableRoles.has(user?.role)) return;
+function openEntryDialog() {
   $('record-message').textContent = '';
-  if (!entries.rows.length) addRow();
   $('entries').showModal();
   entries.querySelector('[name=date]').focus();
+}
+function openRecordEditor(date, ids) {
+  if (saving || $('entries').open || !editableRoles.has(user?.role)) return;
+  editing = {
+    date,
+    revisions: new Map(ids.map(id => [id, revisions.get(id)])),
+    draftRows: [...entries.rows],
+  };
+  entries.replaceChildren();
+  for (const id of ids) {
+    const row = addRow();
+    row.querySelector('[name=date]').value = date;
+    const hole = row.querySelector('[name=hole]');
+    hole.value = id;
+    hole.readOnly = true;
+    row.querySelector('.remove').setAttribute('aria-label', `${id} 수정 대상에서 제외`);
+  }
+  $('entry-title').textContent = `${date} 타설기록 수정`;
+  $('entry-help').textContent = '변경할 홀의 완료일을 수정하세요. ×를 누르면 해당 홀을 수정 대상에서 제외합니다. 한 번에 최대 100개 홀을 수정할 수 있습니다.';
+  $('add').hidden = true;
+  message('');
+  openEntryDialog();
+}
+function closeEntryDialog() {
+  $('entries').close();
+  if (!editing) return;
+  entries.replaceChildren(...editing.draftRows);
+  editing = null;
+  $('entry-title').textContent = entryTitle;
+  $('entry-help').textContent = entryHelp;
+  $('add').hidden = false;
+  message('');
+}
+$('new-record').onclick = () => {
+  if (saving || !editableRoles.has(user?.role)) return;
+  if (!entries.rows.length) addRow();
+  openEntryDialog();
 };
 $('close-entry').onclick = () => {
-  if (!saving) $('entries').close();
+  if (!saving) closeEntryDialog();
 };
 $('entries').addEventListener('cancel', event => {
-  if (saving) event.preventDefault();
+  event.preventDefault();
+  if (!saving) closeEntryDialog();
 });
 async function writeRecords() {
   if (saving) return;
@@ -421,10 +466,14 @@ async function writeRecords() {
       state.x = hole.x;
       state.y = hole.y;
     }
-    entries.replaceChildren();
-    addRow(typeOf(state.selected));
+    const wasEditing = Boolean(editing);
+    if (!wasEditing) {
+      entries.replaceChildren();
+      addRow();
+    }
     message('');
-    $('entries').close();
+    closeEntryDialog();
+    if (wasEditing) $('new-record').focus();
     $('record-message').textContent = `${items.length}개 홀의 타설완료일을 저장했습니다.`;
     render();
   } catch (error) {
@@ -481,29 +530,33 @@ $('memo-form').onsubmit = async event => {
 };
 $('hole-memo').oninput = () => setMessage('memo-message', '');
 $('add').onclick = () => {
-  if (saving) return;
+  if (saving || editing) return;
   if (entries.rows.length >= maximumRows) return message('한 번에 최대 100개 행을 입력할 수 있습니다.', 'error');
-  addRow(entries.lastElementChild?.querySelector('select').value).querySelector('[name=date]').focus();
+  addRow().querySelector('[name=date]').focus();
 };
 entries.addEventListener('paste', event => {
   const cell = event.target.closest('td');
-  if (!cell || cell.cellIndex > 2 || !event.clipboardData) return;
+  if (!cell || cell.cellIndex >= completionFields.length || !event.clipboardData) return;
   const text = event.clipboardData.getData('text/plain');
-  if (!text || (cell.cellIndex === 2 && !/[\t\r\n]/.test(text))) return;
+  if (!text || (cell.cellIndex === completionFields.indexOf('hole') && !/[\t\r\n]/.test(text))) return;
   event.preventDefault();
   if (saving) return;
   const firstRow = cell.parentElement.sectionRowIndex;
-  const {rows, error} = CompletionTools.parsePaste(text, cell.cellIndex, maximumRows - firstRow, maximumRows);
+  const available = (editing ? entries.rows.length : maximumRows) - firstRow;
+  const {rows, error} = CompletionTools.parsePaste(text, cell.cellIndex, available, maximumRows);
   if (error) return message(error, 'error');
   if (!rows.length) return;
+  if (editing && rows.some((values, offset) =>
+    'hole' in values && values.hole !== entries.rows[firstRow + offset].querySelector('[name=hole]').value)) {
+    return message('기존 기록을 수정할 때는 완료일 열에 붙여넣으세요.', 'error');
+  }
   rows.forEach((values, offset) => {
-    const row = entries.rows[firstRow + offset] || addRow('');
+    const row = entries.rows[firstRow + offset] || addRow();
     for (const [name, value] of Object.entries(values)) {
       const field = row.querySelector(`[name=${name}]`);
       field.value = value;
       field.removeAttribute('aria-invalid');
     }
-    updateHolePlaceholder(row);
   });
   message(`${rows.length}개 행을 붙여넣었습니다. 내용을 확인한 뒤 기록을 저장하세요.`, 'ok');
 });
@@ -513,11 +566,12 @@ $('entry-form').addEventListener('submit',event=>{
   const rows = [...entries.rows];
   const input = rows.map(row => {
     for (const field of row.querySelectorAll('[aria-invalid]')) field.removeAttribute('aria-invalid');
-    const date = row.querySelector('[name=date]');
-    return {type: row.querySelector('select').value, holes: row.querySelector('[name=hole]').value,
-      date: date.value};
+    const date = row.querySelector('[name=date]').value;
+    if (editing && date === editing.date) return {holes:'', date:''};
+    return {holes:row.querySelector('[name=hole]').value, date};
   });
-  const {items, errors} = CompletionTools.collect(input, byId, revisions, maximumRows);
+  const {items, errors} = CompletionTools.collect(input, byId, editing?.revisions ?? revisions, maximumRows);
+  if (editing && !errors.length && !items.length) return message('변경된 완료일이 없습니다.');
   for (const error of errors) rows[error.index].querySelector(`[name=${error.field}]`).setAttribute('aria-invalid', 'true');
   if (errors.length || !items.length) {
     message(errors.map(error => `${error.index + 1}행 ${error.reason}`).join(' ') || '저장할 홀 번호와 타설완료일을 입력하세요.', 'error');
