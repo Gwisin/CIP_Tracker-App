@@ -8,6 +8,7 @@ const editableRoles = new Set(['editor','admin']);
 const roleName = {admin:'관리자', editor:'편집 가능', viewer:'조회 전용', pending:'승인 대기', revoked:'접근 중지'};
 const $ = id => document.getElementById(id);
 const map = $('map');
+const mapSurface = map.closest('.map-surface') || map;
 const overview = {zoom:1, x:353.5, y:398.5, selected:null};
 const state = {...overview};
 let viewport;
@@ -231,37 +232,43 @@ map.addEventListener('wheel',event=>{
   const {x,y}=mapPoint(event);
   zoomBy(event.deltaY<0?1.2:1/1.2,x,y);
 },{passive:false});
-map.addEventListener('pointerdown',event=>{
-  if (event.button!==0 || pointers.size>=2 || (pointers.size && event.pointerType!=='touch')) return;
-  if (!pointers.size) gestureMoved=false;
-  else gestureMoved=true;
-  pointers.set(event.pointerId,{...mapPoint(event),hole:event.target.closest('[data-hole]')?.dataset.hole});
-  map.setPointerCapture(event.pointerId);
+// Keep Safari's page gestures from taking over touches that start on the drawing.
+mapSurface.addEventListener('touchstart',event=>{
+  if (event.cancelable) event.preventDefault();
+},{passive:false});
+mapSurface.addEventListener('pointerdown',event=>{
+  if ((event.pointerType!=='touch' && event.button!==0) || pointers.size>=2) return;
+  const active = pointers.values().next().value;
+  if (active && (event.pointerType!=='touch' || active.type!=='touch')) return;
+  mapSurface.setPointerCapture(event.pointerId);
+  gestureMoved=Boolean(active);
+  pointers.set(event.pointerId,{...mapPoint(event),type:event.pointerType,hole:event.target.closest('[data-hole]')?.dataset.hole});
 });
 function pinchFrame(a,b) {
   return {x:(a.x+b.x)/2,y:(a.y+b.y)/2,distance:Math.hypot(a.x-b.x,a.y-b.y)};
 }
-map.addEventListener('pointermove',event=>{
+mapSurface.addEventListener('pointermove',event=>{
   const previous=pointers.get(event.pointerId);
   if (!previous) return;
   const next=mapPoint(event);
   const other=[...pointers.entries()].find(([id])=>id!==event.pointerId)?.[1];
   if (other) {
     const from=pinchFrame(previous,other), to=pinchFrame(next,other);
-    pointers.set(event.pointerId,next);
+    Object.assign(previous,next);
     if (from.distance>1 && to.distance>1) zoomBy(to.distance/from.distance,to.x,to.y,from.x,from.y);
     return;
   }
   const dx=next.x-previous.x,dy=next.y-previous.y;
   if (!gestureMoved && Math.hypot(dx,dy)<4) return;
   gestureMoved=true;
-  pointers.set(event.pointerId,next);
+  Object.assign(previous,next);
   state.x-=dx/viewport.scale;
   state.y-=dy/viewport.scale;
   map.classList.add('dragging');
   render();
 });
 function endGesture(event) {
+  if (event.type==='lostpointercapture' && event.target!==mapSurface) return;
   const point=pointers.get(event.pointerId);
   if (!point) return;
   pointers.delete(event.pointerId);
@@ -270,7 +277,7 @@ function endGesture(event) {
   }
   if (!pointers.size) map.classList.remove('dragging');
 }
-for (const type of ['pointerup','pointercancel','lostpointercapture']) map.addEventListener(type,endGesture);
+for (const type of ['pointerup','pointercancel','lostpointercapture']) mapSurface.addEventListener(type,endGesture);
 map.addEventListener('keydown',event=>{
   if(event.key==='+' || event.key==='=') zoomBy(1.5);
   else if(event.key==='-') zoomBy(1/1.5);

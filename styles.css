@@ -73,7 +73,8 @@ main { width: 100%; max-width: 1800px; margin: auto; padding: 26px 28px 36px; }
   border-block: 1px solid var(--line);
   background: #fafcfd;
 }
-#map { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; user-select: none; }
+.map-surface { min-width: 0; touch-action: none; }
+#map { display: block; width: 100%; height: 100%; cursor: grab; user-select: none; }
 #map.dragging { cursor: grabbing; }
 .selection { display: none; position: absolute; top: 10px; left: 12px; max-width: calc(100% - 24px); padding: 5px 9px; border: 1px solid #bfd5dc; border-radius: 5px; background: #fff; color: var(--ink); font-size: 12px; pointer-events: none; }
 .selection.visible { display: block; }
