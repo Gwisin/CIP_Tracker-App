@@ -13,6 +13,14 @@ const map = $('map');
 const mapSurface = map.closest('.map-surface') || map;
 const overview = {zoom:1, x:353.5, y:398.5, selected:null};
 const state = {...overview};
+const dayInMilliseconds = 86400000;
+const projectDateFormat = new Intl.DateTimeFormat('en-CA', {
+  timeZone:'Asia/Seoul', year:'numeric', month:'2-digit', day:'2-digit',
+});
+const timeline = $('timeline-date');
+let today = projectToday();
+let firstDate = today;
+let pastDate = null;
 let viewport;
 const pointers = new Map();
 let gestureMoved = false;
@@ -45,17 +53,86 @@ function project(hole) {
 function numberFits(hole,size) {
   return size*1.75 >= hole.id.length*6+3;
 }
+function projectToday() {
+  const parts = projectDateFormat.formatToParts(new Date());
+  return ['year', 'month', 'day'].map(type => parts.find(part => part.type === type).value).join('-');
+}
+function dayNumber(date) {
+  return Date.parse(date + 'T00:00:00Z') / dayInMilliseconds;
+}
+function canEditRecords() {
+  return !pastDate && editableRoles.has(user?.role);
+}
+function completionOnDate(id) {
+  const date = records[id];
+  return date && date <= (pastDate || today) ? date : '';
+}
+function incompleteLabel(id) {
+  return pastDate || records[id] ? '기준일 미완료' : '미등록';
+}
 function renderMetrics() {
-  const completed = Object.keys(records);
-  for (const kind of ['h', 'cip']) {
-    $(`${kind}-total`).textContent = holes.filter(hole => typeOf(hole.id) === kind).length;
-    $(`${kind}-completed`).textContent = completed.filter(id => typeOf(id) === kind).length;
+  const selectedDate = pastDate || today;
+  const completed = {h:0, cip:0};
+  const daily = {h:0, cip:0};
+  for (const [id, date] of Object.entries(records)) {
+    if (date > selectedDate) continue;
+    const kind = typeOf(id);
+    completed[kind]++;
+    if (date === selectedDate) daily[kind]++;
   }
-  $('completed').textContent = completed.length;
+  $('h-completed').textContent = completed.h;
+  $('cip-completed').textContent = completed.cip;
+  $('completed').textContent = completed.h + completed.cip;
+  const count = daily.h + daily.cip;
+  $('timeline-summary').textContent = count
+    ? `선택일 완료 ${count}개 · H파일 ${daily.h}개 · 철근망 ${daily.cip}개`
+    : '선택일 완료 기록 없음';
+}
+function renderTimeline() {
+  const selectedDate = pastDate || today;
+  timeline.value = dayNumber(selectedDate);
+  const label = pastDate ? selectedDate : selectedDate + ' · 오늘';
+  $('timeline-selected').textContent = label;
+  timeline.setAttribute('aria-valuetext', label);
+  $('timeline-prev').disabled = selectedDate === firstDate;
+  $('timeline-next').disabled = !pastDate;
+  $('timeline-today').disabled = !pastDate;
+  $('tracker').classList.toggle('historical-view', Boolean(pastDate));
+  renderMetrics();
+}
+function refreshTimeline() {
+  today = projectToday();
+  firstDate = today;
+  for (const date of Object.values(records)) {
+    if (date < firstDate) firstDate = date;
+  }
+  if (pastDate && pastDate < firstDate) pastDate = firstDate;
+  if (pastDate && pastDate >= today) pastDate = null;
+  timeline.min = dayNumber(firstDate);
+  timeline.max = dayNumber(today);
+  timeline.disabled = firstDate === today;
+  $('timeline-start').textContent = firstDate === today ? '' : firstDate;
+  renderTimeline();
+}
+function selectTimelineDay(day) {
+  const date = new Date(day * dayInMilliseconds).toISOString().slice(0, 10);
+  pastDate = date < today ? date : null;
+  renderTimeline();
+  render();
+}
+timeline.oninput = () => selectTimelineDay(timeline.valueAsNumber);
+$('timeline-prev').onclick = () => selectTimelineDay(timeline.valueAsNumber - 1);
+$('timeline-next').onclick = () => selectTimelineDay(timeline.valueAsNumber + 1);
+$('timeline-today').onclick = () => selectTimelineDay(Number(timeline.max));
+
+function checkProjectDate() {
+  if (projectToday() === today) return;
+  refreshTimeline();
+  render();
 }
 function renderInspector() {
   const hole = byId.get(state.selected);
-  const canEdit = editableRoles.has(user?.role);
+  const canEdit = canEditRecords();
   $('selection-empty').hidden = Boolean(hole);
   $('hole-info').hidden = !hole;
   $('clear-selection').hidden = !hole;
@@ -67,12 +144,14 @@ function renderInspector() {
   const kind = typeOf(hole.id);
   $('selected-kind').textContent = kind === 'h' ? 'H파일' : '철근망';
   $('selected-number').textContent = hole.id;
-  $('selected-status').textContent = records[hole.id] ? '타설 완료' : '미등록';
-  $('selected-status').classList.toggle('done', Boolean(records[hole.id]));
+  const date = completionOnDate(hole.id);
+  $('selected-status').textContent = date ? '타설 완료' : incompleteLabel(hole.id);
+  $('selected-status').classList.toggle('done', Boolean(date));
   $('selected-status').classList.toggle('cip-completion', kind === 'cip');
-  $('selected-date').textContent = records[hole.id] || '등록된 완료일 없음';
+  $('selected-date').textContent = date || '기준일까지 완료일 없음';
   $('memo-form').hidden = !canEdit;
   $('memo-readonly').hidden = canEdit;
+  $('memo-label').textContent = pastDate ? '현재 메모' : '메모';
   $('memo-text').textContent = memos.get(hole.id)?.memo || '등록된 메모 없음';
   const memo = $('hole-memo');
   const isSaving = savingMemos.has(hole.id);
@@ -103,14 +182,16 @@ function render() {
   const detail = viewport.scale >= 4;
   const step = state.zoom < 1.65 ? 20 : 10;
   const size = Math.max(1,1.39*viewport.scale);
-  const coordinates = holes.map(hole => ({...hole, ...project(hole)}));
+  const selectedDate = pastDate || today;
+  const coordinates = holes.map(hole => ({...hole, ...project(hole), date:completionOnDate(hole.id)}));
   const visible = coordinates.filter(h => h.x>=-size && h.x<=width+size && h.y>=-size && h.y<=height+size);
   const points = coordinates.map(h => `${h.x},${h.y}`).join(' ');
   draw(scene,'polygon',{points,fill:'none',stroke:'#c6d5d5','stroke-width':1.5,'stroke-linejoin':'round'});
-  // Completed holes render last so their marks remain visible at overview scale.
-  const ordered = [...visible].sort((a, b) => Number(Boolean(records[a.id])) - Number(Boolean(records[b.id])));
+  const completionOrder = hole => hole.date === selectedDate ? 2 : Number(Boolean(hole.date));
+  // Draw selected-day completions above nearby holes at overview scale.
+  const ordered = [...visible].sort((a, b) => completionOrder(a) - completionOrder(b));
   for (const hole of ordered) {
-    const done = Boolean(records[hole.id]);
+    const done = Boolean(hole.date);
     const selected = state.selected === hole.id;
     const hFile = typeOf(hole.id)==='h';
     const cipCompletion = done && !hFile;
@@ -120,15 +201,18 @@ function render() {
     const stroke = selected ? 'var(--teal)' : done ? 'var(--done-edge)' : hFile ? 'var(--h-edge)' : '#698589';
     if (selected) draw(scene, 'circle', {cx:hole.x, cy:hole.y, r:size+5, fill:'none', stroke:'var(--teal)', 'stroke-width':2, 'pointer-events':'none'});
     const node = draw(scene,'circle',{cx:hole.x,cy:hole.y,r:size*.95,fill,stroke,'stroke-width':outline,class:completionClass,'data-hole':hole.id,opacity:done||selected||detail?1:.55});
-    draw(node,'title',{},`${hole.id} · ${records[hole.id] || '미등록'}`);
+    draw(node,'title',{},`${hole.id} · ${hole.date || incompleteLabel(hole.id)}`);
+    if (hole.date === selectedDate) {
+      draw(scene, 'circle', {cx:hole.x, cy:hole.y, r:size+1.4, class:'timeline-marker', 'pointer-events':'none'});
+    }
     if (detail && done && numberFits(hole,size)) {
       draw(scene,'text',{x:hole.x,y:hole.y+4,'text-anchor':'middle','font-size':11,'font-weight':700,fill:'var(--done-number-ink)',class:completionClass,'pointer-events':'none','data-number':hole.id},hole.id);
     }
   }
   const occupied = [];
-  const labelHoles = [...visible].sort((a,b) => (Number(b.id===state.selected) - Number(a.id===state.selected)) || (detail ? Number(Boolean(records[b.id])) - Number(Boolean(records[a.id])) : 0));
+  const labelHoles = [...visible].sort((a,b) => (Number(b.id===state.selected) - Number(a.id===state.selected)) || (detail ? completionOrder(b) - completionOrder(a) : 0));
   for (const hole of labelHoles) {
-    const date = records[hole.id];
+    const {date} = hole;
     const selected = state.selected === hole.id;
     let label;
     if (detail && date) {
@@ -161,7 +245,7 @@ function render() {
   map.replaceChildren(scene);
   const choice = byId.get(state.selected);
   $('selection').classList.toggle('visible',Boolean(choice));
-  $('selection').textContent = choice ? `${choice.id} · ${typeOf(choice.id)==='h'?'H파일':'철근망'} · ${records[choice.id] || '미등록'}` : '';
+  $('selection').textContent = choice ? `${choice.id} · ${typeOf(choice.id)==='h'?'H파일':'철근망'} · ${completionOnDate(choice.id) || incompleteLabel(choice.id)}` : '';
   $('zoom-value').textContent = Math.round(state.zoom*100)+'%';
   $('overview').setAttribute('aria-pressed', String(state.zoom === 1 && state.x === overview.x && state.y === overview.y));
   renderInspector();
@@ -291,8 +375,7 @@ function addRow() {
     <td data-label="홀 번호"><input name="hole" aria-label="홀 번호 ${number}" placeholder="예: 213, 213-1" autocomplete="off" maxlength="2000"></td>
     <td><button class="remove" type="button" aria-label="행 ${number} 삭제">×</button></td>`;
   const date = row.querySelector('[name=date]');
-  const today = new Date();
-  date.value = [today.getFullYear(), String(today.getMonth() + 1).padStart(2, '0'), String(today.getDate()).padStart(2, '0')].join('-');
+  date.value = projectToday();
   date.addEventListener('click', () => {
     if (typeof date.showPicker === 'function') {
       try { date.showPicker(); } catch { /* Keep the native date control available when opening is restricted. */ }
@@ -336,7 +419,7 @@ function applyRecords(rows) {
     revisions.set(item.id,item.revision);
   }
   renderHistory();
-  renderMetrics();
+  refreshTimeline();
 }
 function recordHoleButton(id, label) {
   const button = document.createElement('button');
@@ -367,6 +450,7 @@ function renderHistory() {
     if (editableRoles.has(user?.role)) {
       const edit = document.createElement('button');
       edit.type = 'button';
+      edit.className = 'history-edit';
       edit.textContent = '수정';
       edit.setAttribute('aria-label', `${date} 타설 기록 수정`);
       edit.setAttribute('aria-haspopup', 'dialog');
@@ -405,7 +489,7 @@ function openEntryDialog() {
   entries.querySelector('[name=date]').focus();
 }
 function openRecordEditor(date, ids) {
-  if (saving || $('entries').open || !editableRoles.has(user?.role)) return;
+  if (saving || $('entries').open || !canEditRecords()) return;
   editing = {
     ids: new Set(ids),
     dates: {...records},
@@ -439,7 +523,7 @@ function closeEntryDialog() {
   message('');
 }
 $('new-record').onclick = () => {
-  if (saving || !editableRoles.has(user?.role)) return;
+  if (saving || !canEditRecords()) return;
   if (!entries.rows.length) addRow();
   openEntryDialog();
 };
@@ -451,7 +535,7 @@ $('entries').addEventListener('cancel', event => {
   if (!saving) closeEntryDialog();
 });
 async function writeRecords() {
-  if (saving) return;
+  if (saving || !canEditRecords()) return;
   saving = true;
   const items = pending;
   $('bulk-fields').disabled = true;
@@ -509,7 +593,7 @@ function requestSave(items) {
 $('memo-form').onsubmit = async event => {
   event.preventDefault();
   const id = state.selected;
-  if (!id || !editableRoles.has(user?.role) || savingMemos.has(id)) return;
+  if (!id || !canEditRecords() || savingMemos.has(id)) return;
   const field = $('hole-memo');
   const existing = memos.get(id);
   const memo = field.value.trim();
@@ -568,7 +652,7 @@ entries.addEventListener('paste', event => {
 });
 $('entry-form').addEventListener('submit',event=>{
   event.preventDefault();
-  if (saving || !editableRoles.has(user?.role)) return;
+  if (saving || !canEditRecords()) return;
   const rows = [...entries.rows];
   const input = rows.map(row => {
     for (const field of row.querySelectorAll('[aria-invalid]')) field.removeAttribute('aria-invalid');
@@ -825,6 +909,8 @@ async function load() {
       loadUsers();
     }
     showMainView(false);
+    window.addEventListener('focus', checkProjectDate);
+    window.setInterval(checkProjectDate, 60000);
   } catch (error) {
     showGate('현황을 불러오지 못했습니다.',error.message,{reload:true});
   }
