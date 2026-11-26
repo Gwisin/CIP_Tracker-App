@@ -69,12 +69,27 @@ const CompletionTools = {
     if (items.length > limit) errors.push({index: 0, field: 'hole', reason: `한 번에 최대 ${limit}개 홀을 저장할 수 있습니다.`});
     return {items, errors};
   },
-  editItems(snapshot, selected, value, limit = 100) {
-    const date = normalizeCompletionDate(value);
-    if (!date) return {error: '올바른 타설완료일을 선택하세요.'};
-    const items = snapshot.filter(item => selected.has(item.id)).map(item => ({...item, date}));
-    if (!items.length) return {error: '수정할 홀을 선택하세요.'};
-    if (items.length > limit) return {error: `한 번에 최대 ${limit}개 홀을 수정할 수 있습니다.`};
+  editItems(row, snapshot, byId, limit = 100) {
+    const date = normalizeCompletionDate(row.date);
+    const fail = (field, error) => ({field, error});
+    if (!date) return fail('date', '올바른 타설완료일을 입력하세요.');
+    const desired = new Set();
+    const holes = row.holes.trim();
+    for (const value of holes ? holes.split(',') : []) {
+      const id = value.trim();
+      if (!byId.has(id)) return fail('hole', `${id || '(빈 번호)'}: 도면에 있는 홀 번호를 입력하세요.`);
+      if (desired.has(id)) return fail('hole', `${id}: 같은 홀을 한 번만 입력하세요.`);
+      if (!snapshot.ids.has(id) && snapshot.dates[id]) return fail('hole', `${id}: 이미 완료 기록이 있습니다.`);
+      desired.add(id);
+    }
+    const items = [];
+    for (const id of desired) {
+      if (date !== snapshot.dates[id]) items.push({id, date, expectedRevision: snapshot.revisions.get(id) || 0});
+    }
+    for (const id of snapshot.ids) {
+      if (!desired.has(id)) items.push({id, date:null, expectedRevision: snapshot.revisions.get(id)});
+    }
+    if (items.length > limit) return {error: `한 번에 최대 ${limit}개 홀의 기록을 변경할 수 있습니다.`};
     return {items};
   },
   group(records) {

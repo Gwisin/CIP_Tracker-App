@@ -304,7 +304,6 @@ function addRow() {
     const next = row.nextElementSibling || row.previousElementSibling;
     row.remove();
     if (next) next.querySelector('[name=date]').focus();
-    else if (editing) $('close-entry').focus();
     else addRow().querySelector('[name=date]').focus();
   };
   entries.append(row);
@@ -333,7 +332,8 @@ async function api(path, {body, method} = {}) {
 }
 function applyRecords(rows) {
   for (const item of rows) {
-    records[item.id] = item.date;
+    if (item.date === null) delete records[item.id];
+    else records[item.id] = item.date;
     revisions.set(item.id,item.revision);
   }
   renderHistory();
@@ -408,29 +408,31 @@ function openEntryDialog() {
 function openRecordEditor(date, ids) {
   if (saving || $('entries').open || !editableRoles.has(user?.role)) return;
   editing = {
-    date,
-    revisions: new Map(ids.map(id => [id, revisions.get(id)])),
+    ids: new Set(ids),
+    dates: {...records},
+    revisions: new Map(revisions),
     draftRows: [...entries.rows],
   };
   entries.replaceChildren();
-  for (const id of ids) {
-    const row = addRow();
-    row.querySelector('[name=date]').value = date;
-    const hole = row.querySelector('[name=hole]');
-    hole.value = id;
-    hole.readOnly = true;
-    row.querySelector('.remove').setAttribute('aria-label', `${id} 수정 대상에서 제외`);
-  }
+  const row = addRow();
+  row.querySelector('[name=date]').value = date;
+  const hole = row.querySelector('[name=hole]');
+  hole.value = ids.join(', ');
+  hole.removeAttribute('maxlength');
+  const table = entries.closest('table');
+  table.classList.replace('entry-table', 'record-edit-table');
   $('entry-title').textContent = `${date} 타설기록 수정`;
-  $('entry-help').textContent = '변경할 홀의 완료일을 수정하세요. ×를 누르면 해당 홀을 수정 대상에서 제외합니다. 한 번에 최대 100개 홀을 수정할 수 있습니다.';
+  $('entry-help').textContent = '그날의 전체 홀 번호를 쉼표로 구분해 입력하세요. 목록에서 뺀 홀은 저장할 때 삭제됩니다.';
   $('add').hidden = true;
   message('');
   openEntryDialog();
+  hole.focus();
 }
 function closeEntryDialog() {
   $('entries').close();
   if (!editing) return;
   entries.replaceChildren(...editing.draftRows);
+  entries.closest('table').classList.replace('record-edit-table', 'entry-table');
   editing = null;
   $('entry-title').textContent = entryTitle;
   $('entry-help').textContent = entryHelp;
@@ -460,8 +462,9 @@ async function writeRecords() {
   try {
     const data = await api('/api/completions', {method:'POST', body:{items}});
     applyRecords(data.records);
-    state.selected = items.at(-1).id;
-    if (viewport?.scale >= 4) {
+    const updated = items.filter(item => item.date !== null);
+    if (updated.length) state.selected = updated.at(-1).id;
+    if (updated.length && viewport?.scale >= 4) {
       const hole = byId.get(state.selected);
       state.x = hole.x;
       state.y = hole.y;
@@ -474,7 +477,10 @@ async function writeRecords() {
     message('');
     closeEntryDialog();
     if (wasEditing) $('new-record').focus();
-    $('record-message').textContent = `${items.length}개 홀의 타설완료일을 저장했습니다.`;
+    const removed = items.length - updated.length;
+    const saved = updated.length ? `${updated.length}개 홀의 타설완료일을 저장했습니다.` : '';
+    const deleted = removed ? `${removed}개 홀의 기록을 삭제했습니다.` : '';
+    $('record-message').textContent = [saved, deleted].filter(Boolean).join(' ');
     render();
   } catch (error) {
     message(error.message, 'error');
@@ -489,9 +495,14 @@ async function writeRecords() {
 function requestSave(items) {
   if (saving || $('confirm').open) return;
   pending = items;
-  const changed = items.filter(item => records[item.id] && records[item.id] !== item.date);
+  const dates = editing?.dates ?? records;
+  const changed = items.filter(item => dates[item.id] && dates[item.id] !== item.date);
   if (changed.length) {
-    $('changes').textContent = changed.map(item => `${item.id} (${records[item.id]} → ${item.date})`).join(', ');
+    $('changes').textContent = (editing ? items : changed).map(({id, date}) => {
+      if (date === null) return `${id} (${dates[id]} 기록 삭제)`;
+      if (!dates[id]) return `${id} (${date} 기록)`;
+      return `${id} (${dates[id]} → ${date})`;
+    }).join(', ');
     $('confirm').returnValue = 'cancel';
     $('confirm').showModal();
   } else writeRecords();
@@ -546,10 +557,6 @@ entries.addEventListener('paste', event => {
   const {rows, error} = CompletionTools.parsePaste(text, cell.cellIndex, available, maximumRows);
   if (error) return message(error, 'error');
   if (!rows.length) return;
-  if (editing && rows.some((values, offset) =>
-    'hole' in values && values.hole !== entries.rows[firstRow + offset].querySelector('[name=hole]').value)) {
-    return message('기존 기록을 수정할 때는 완료일 열에 붙여넣으세요.', 'error');
-  }
   rows.forEach((values, offset) => {
     const row = entries.rows[firstRow + offset] || addRow();
     for (const [name, value] of Object.entries(values)) {
@@ -567,11 +574,20 @@ $('entry-form').addEventListener('submit',event=>{
   const input = rows.map(row => {
     for (const field of row.querySelectorAll('[aria-invalid]')) field.removeAttribute('aria-invalid');
     const date = row.querySelector('[name=date]').value;
-    if (editing && date === editing.date) return {holes:'', date:''};
     return {holes:row.querySelector('[name=hole]').value, date};
   });
-  const {items, errors} = CompletionTools.collect(input, byId, editing?.revisions ?? revisions, maximumRows);
-  if (editing && !errors.length && !items.length) return message('변경된 완료일이 없습니다.');
+  if (editing) {
+    const {items, error, field} = CompletionTools.editItems(input[0], editing, byId, maximumRows);
+    if (error) {
+      const invalid = field && rows[0].querySelector(`[name=${field}]`);
+      invalid?.setAttribute('aria-invalid', 'true');
+      invalid?.focus();
+      return message(error, 'error');
+    }
+    if (!items.length) return message('변경된 기록이 없습니다.');
+    return requestSave(items);
+  }
+  const {items, errors} = CompletionTools.collect(input, byId, revisions, maximumRows);
   for (const error of errors) rows[error.index].querySelector(`[name=${error.field}]`).setAttribute('aria-invalid', 'true');
   if (errors.length || !items.length) {
     message(errors.map(error => `${error.index + 1}행 ${error.reason}`).join(' ') || '저장할 홀 번호와 타설완료일을 입력하세요.', 'error');
@@ -793,6 +809,7 @@ async function load() {
     const data=await api('/api/holes');
     holes=data.holes;
     byId=new Map(holes.map(hole=>[hole.id,hole]));
+    for (const [id, revision] of Object.entries(data.deletedRevisions || {})) revisions.set(id, revision);
     for (const memo of data.memos || []) memos.set(memo.id, memo);
     applyRecords(data.records);
     $('total').textContent=holes.length;
