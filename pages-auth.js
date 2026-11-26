@@ -9,8 +9,24 @@ const PagesAuth = (() => {
   let expirationTimer;
 
   function clear() {
+    const previous = session;
     session = null;
     clearTimeout(expirationTimer);
+    try {
+      if (previous && localStorage.getItem(sessionKey) === JSON.stringify(previous)) {
+        localStorage.removeItem(sessionKey);
+      }
+    } catch { /* Storage can be disabled. */ }
+    try { sessionStorage.removeItem(sessionKey); } catch { /* Storage can be disabled. */ }
+  }
+  function persistSession() {
+    const saved = JSON.stringify(session);
+    try {
+      localStorage.setItem(sessionKey, saved);
+    } catch {
+      try { sessionStorage.setItem(sessionKey, saved); } catch { /* Keep this tab signed in. */ }
+      return;
+    }
     try { sessionStorage.removeItem(sessionKey); } catch { /* Storage can be disabled. */ }
   }
   function checkExpiration() {
@@ -21,13 +37,11 @@ const PagesAuth = (() => {
   }
   function restore(value) {
     if (typeof value?.token !== 'string' || !/^cip_[\w-]{43}$/.test(value.token)
-        || !Number.isSafeInteger(value.expiresAt) || value.expiresAt <= Date.now()) {
-      clear();
-      return;
-    }
+        || !Number.isSafeInteger(value.expiresAt) || value.expiresAt <= Date.now()) return false;
     session = value;
     clearTimeout(expirationTimer);
     expirationTimer = setTimeout(checkExpiration, value.expiresAt - Date.now());
+    return true;
   }
 
   async function request(path, options) {
@@ -59,14 +73,27 @@ const PagesAuth = (() => {
       body:JSON.stringify({code, verifier}),
     });
     if (!response.ok) throw new Error('로그인을 완료하지 못했습니다. 다시 시도하세요.');
-    const issued = await response.json();
-    restore(issued);
-    if (!session) throw new Error('로그인이 만료되었습니다. 다시 로그인하세요.');
-    sessionStorage.setItem(sessionKey, JSON.stringify(issued));
+    if (!restore(await response.json())) throw new Error('로그인이 만료되었습니다. 다시 로그인하세요.');
+    persistSession();
   }
 
   if (!origin) return null;
-  try { restore(JSON.parse(sessionStorage.getItem(sessionKey))); } catch { clear(); }
+  try {
+    const saved = localStorage.getItem(sessionKey);
+    if (saved && !restore(JSON.parse(saved))) localStorage.removeItem(sessionKey);
+  } catch { /* Storage can be disabled. */ }
+  try {
+    const previous = sessionStorage.getItem(sessionKey);
+    if (!session && previous && restore(JSON.parse(previous))) {
+      persistSession();
+    } else if (previous) {
+      sessionStorage.removeItem(sessionKey);
+    }
+  } catch { /* Storage can be disabled. */ }
+  window.addEventListener('storage', event => {
+    if (event.storageArea === localStorage && (event.key === sessionKey || event.key === null)
+        && event.newValue !== (session ? JSON.stringify(session) : null)) location.reload();
+  });
   for (const event of ['focus', 'pageshow']) window.addEventListener(event, checkExpiration);
   document.addEventListener('visibilitychange', checkExpiration);
   return {request, signIn, completeSignIn, clear, hasSession:() => Boolean(session)};
