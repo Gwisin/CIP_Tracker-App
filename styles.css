@@ -143,7 +143,7 @@ main { width: 100%; max-width: 1800px; margin: auto; padding: 26px 28px 36px; }
 .timeline-endpoints { display: flex; grid-column: 2; justify-content: space-between; color: var(--muted); }
 .timeline-past-note { display: none; }
 .historical-view .timeline-past-note { display: block; }
-.historical-view :is(#new-record, .history-edit) { display: none; }
+.historical-view :is(#new-record, #edit-records) { display: none; }
 @media (pointer: coarse) {
   .timeline-controls button, #timeline-date { min-width: 44px; min-height: 44px; }
 }
@@ -192,6 +192,9 @@ td { padding: 8px 9px; border-bottom: 1px solid #e6edf1; vertical-align: top; fo
 #entries { width: 720px; }
 #entries .section-title { align-items: flex-start; }
 #entries .action-row .message { margin: 0 auto 0 0; }
+#entry-table-shell:has(.record-edit-table) { max-height: min(52dvh, 560px); overflow: auto; }
+.record-edit-table thead { position: sticky; top: 0; z-index: 1; }
+#edit-more { margin-top: 12px; color: var(--teal); }
 .record-edit-table .remove-col, .record-edit-table tr > :last-child { display: none; }
 @media (max-width: 620px) {
   .record-edit-table .date-col { width: 128px; }
@@ -389,14 +392,12 @@ dialog .action-row { justify-content: flex-end; }
 .dashboard-sidebar { gap: 16px; }
 .history-panel { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 18px; }
 .history-panel .section-title { margin: 0; gap: 8px; align-items: center; }
-#new-record { font-size: var(--app-text-small, 12px); }
+:is(#new-record, #edit-records) { font-size: var(--app-text-small, 12px); }
 #record-message:empty { display: none; }
 .history-list { max-height: 420px; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
 .history-card { padding: 14px 0; border-bottom: 1px solid var(--line); }
 .history-card:first-child { padding-top: 0; }
-.history-card-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 10px; }
-.history-card h3 { margin: 0; font-variant-numeric: tabular-nums; }
-.history-card-heading button { font-size: var(--app-text-small, 12px); }
+.history-card h3 { margin: 0 0 10px; font-variant-numeric: tabular-nums; }
 .history-card p { font-size: 12px; margin: 10px 0 5px; }
 #history-more { width: 100%; color: var(--teal); }
 @media (min-width: 701px) {
