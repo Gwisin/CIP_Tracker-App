@@ -119,6 +119,35 @@ main { width: 100%; max-width: 1800px; margin: auto; padding: 26px 28px 36px; }
   --done-number-ink: var(--done-label-ink);
 }
 .swatch.done { background: var(--done-fill); border-color: var(--done-edge); }
+.timeline-marker { fill: none; stroke: #a45104; stroke-width: 1.4; }
+.swatch.timeline-marker { border: 2px solid #a45104; }
+.map-timeline {
+  display: grid;
+  gap: 5px;
+  padding: 10px 16px 12px;
+  border-top: 1px solid var(--line);
+  background: #f2f7f8;
+  font-size: var(--app-text-small, 12px);
+}
+.timeline-heading, .timeline-details { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 10px; }
+.timeline-heading label { margin-right: 4px; color: var(--muted); }
+#timeline-selected, .timeline-endpoints { font-variant-numeric: tabular-nums; }
+#timeline-today { color: var(--teal); }
+.timeline-controls {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 10px;
+}
+.timeline-controls button { min-width: 40px; padding: 0 8px; font-size: 21px; }
+#timeline-date { margin: 0; padding: 0; border: 0; background: transparent; accent-color: var(--teal); }
+.timeline-endpoints { display: flex; grid-column: 2; justify-content: space-between; color: var(--muted); }
+.timeline-past-note { display: none; }
+.historical-view .timeline-past-note { display: block; }
+.historical-view :is(#new-record, .history-edit) { display: none; }
+@media (pointer: coarse) {
+  .timeline-controls button, #timeline-date { min-width: 44px; min-height: 44px; }
+}
 .inspector { min-width: 0; padding: 18px 20px; }
 .inspector-heading { display: flex; align-items: center; justify-content: space-between; min-height: 34px; margin-bottom: 18px; }
 #clear-selection { min-height: 30px; padding: 3px 9px; }
@@ -327,7 +356,7 @@ dialog .action-row { justify-content: flex-end; }
   .map-navigation { gap: 4px; padding-inline: 8px; }
   .map-navigation button { padding-inline: 8px; }
   #zoom-value { min-width: 40px; padding-inline: 3px; }
-  .map-footer { padding: 10px 12px; }
+  .map-footer, .map-timeline { padding-inline: 12px; }
   .inspector { border-radius: 0 0 8px 8px; padding: 14px; }
   .inspector-heading { margin-bottom: 12px; }
   .empty-selection { padding: 0 0 5px; }

@@ -67,7 +67,7 @@
     <div class="tracker-summary">
       <div class="heading">
         <h1>CIP 공정현황</h1>
-        <p class="overall">전체 <span id="total"></span>개 중 <strong id="completed" aria-live="polite"></strong>개 완료</p>
+        <p class="overall">전체 <span id="total"></span>개 중 <strong id="completed" aria-live="polite"></strong>개 누적 완료</p>
       </div>
       <dl class="metrics" aria-label="공종별 타설 현황">
         <div><dt><i class="swatch h-file" aria-hidden="true"></i>H파일</dt><dd><strong id="h-completed">0</strong><span> / <span id="h-total">397</span>개 완료</span></dd></div>
@@ -97,7 +97,31 @@
             </div>
           </div>
         </div>
-        <div class="map-footer"><div class="legend"><span><i class="swatch h-file" aria-hidden="true"></i>H파일</span><span><i class="swatch" aria-hidden="true"></i>철근망</span><span><i class="swatch done" aria-hidden="true"></i>H파일 타설 완료</span><span><i class="swatch done cip-completion" aria-hidden="true"></i>철근망 타설 완료</span></div></div>
+        <div class="map-footer">
+          <div class="legend">
+            <span><i class="swatch h-file" aria-hidden="true"></i>H파일</span>
+            <span><i class="swatch" aria-hidden="true"></i>철근망</span>
+            <span><i class="swatch done" aria-hidden="true"></i>H파일 타설 완료</span>
+            <span><i class="swatch done cip-completion" aria-hidden="true"></i>철근망 타설 완료</span>
+            <span><i class="swatch timeline-marker" aria-hidden="true"></i>선택일 완료</span>
+          </div>
+        </div>
+        <section class="map-timeline" aria-label="일자별 시공현황">
+          <div class="timeline-heading">
+            <div><label for="timeline-date">조회 기준일</label> <strong id="timeline-selected"></strong></div>
+            <button type="button" id="timeline-today">오늘</button>
+          </div>
+          <div class="timeline-controls">
+            <button type="button" id="timeline-prev" aria-label="이전 날짜">‹</button>
+            <input type="range" id="timeline-date" min="0" max="0" step="1" value="0" disabled>
+            <button type="button" id="timeline-next" aria-label="다음 날짜">›</button>
+            <div class="timeline-endpoints" aria-hidden="true"><span id="timeline-start"></span><span>오늘</span></div>
+          </div>
+          <div class="timeline-details">
+            <p id="timeline-summary" role="status"></p>
+            <p class="timeline-past-note">과거 현황 · 조회 전용</p>
+          </div>
+        </section>
       </section>
       <div class="dashboard-sidebar">
         <aside class="inspector board" aria-labelledby="selected-title">
@@ -112,7 +136,7 @@
               <textarea id="hole-memo" rows="3" maxlength="1000" placeholder="현장 특이사항을 입력하세요." aria-describedby="memo-message"></textarea>
               <div class="memo-actions"><p id="memo-message" class="message" role="status"></p><button id="save-memo" class="primary" type="submit">메모 저장</button></div>
             </form>
-            <dl id="memo-readonly" class="memo-readonly" hidden><div><dt>메모</dt><dd id="memo-text"></dd></div></dl>
+            <dl id="memo-readonly" class="memo-readonly" hidden><div><dt id="memo-label">메모</dt><dd id="memo-text"></dd></div></dl>
           </div>
         </aside>
         <aside class="board history-panel" aria-labelledby="history-title">
