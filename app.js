@@ -52,7 +52,6 @@ function renderMetrics() {
     $(`${kind}-completed`).textContent = completed.filter(id => typeOf(id) === kind).length;
   }
   $('completed').textContent = completed.length;
-  $('remaining').textContent = holes.length - completed.length;
 }
 function renderInspector() {
   const hole = byId.get(state.selected);
