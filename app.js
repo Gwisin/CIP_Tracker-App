@@ -32,6 +32,7 @@ const fmtDate = date => date.split('-').slice(1).map(Number).join('/');
 const typeOf = completionType;
 const zoomLimit = 160;
 const maximumRows = 100;
+const editPageSize = 10;
 let saving = false;
 const entries = $('rows');
 const entryTitle = $('entry-title').textContent;
@@ -444,21 +445,7 @@ function renderHistory() {
     card.className = 'history-card';
     const heading = document.createElement('h3');
     heading.textContent = `${date} · ${total}개`;
-    const header = document.createElement('div');
-    header.className = 'history-card-heading';
-    header.append(heading);
-    if (editableRoles.has(user?.role)) {
-      const edit = document.createElement('button');
-      edit.type = 'button';
-      edit.className = 'history-edit';
-      edit.textContent = '수정';
-      edit.setAttribute('aria-label', `${date} 타설 기록 수정`);
-      edit.setAttribute('aria-haspopup', 'dialog');
-      edit.setAttribute('aria-controls', 'entries');
-      edit.onclick = () => openRecordEditor(date, [...h, ...cip]);
-      header.append(edit);
-    }
-    card.append(header);
+    card.append(heading);
     for (const [label, ids] of [['H파일', h], ['철근망', cip]]) {
       if (!ids.length) continue;
       const summary = document.createElement('p');
@@ -483,34 +470,55 @@ $('history-more').onclick = () => {
   list.scrollTop = top;
   list.scrollBy({top:240, behavior:'smooth'});
 };
-function openEntryDialog() {
+function openEntryDialog(focusTarget) {
   $('record-message').textContent = '';
   $('entries').showModal();
-  entries.querySelector('[name=date]').focus();
+  focusTarget.focus();
 }
-function openRecordEditor(date, ids) {
+function appendEditPage() {
+  const start = entries.rows.length;
+  for (const {date, h, cip} of editing.groups.slice(start, start + editPageSize)) {
+    const ids = [...h, ...cip];
+    for (const id of ids) editing.ids.add(id);
+    const row = addRow();
+    const dateField = row.querySelector('[name=date]');
+    dateField.value = date;
+    dateField.setAttribute('aria-label', `${date} 완료일`);
+    const holeField = row.querySelector('[name=hole]');
+    holeField.value = ids.join(', ');
+    holeField.setAttribute('aria-label', `${date} 홀 번호`);
+    holeField.removeAttribute('maxlength');
+  }
+  const remaining = editing.groups.length - entries.rows.length;
+  $('edit-more').hidden = remaining === 0;
+  $('edit-more').textContent = `더보기 · ${remaining}일 남음`;
+  return entries.rows[start]?.querySelector('[name=hole]');
+}
+$('edit-records').onclick = () => {
   if (saving || $('entries').open || !canEditRecords()) return;
+  const groups = CompletionTools.group(records);
   editing = {
-    ids: new Set(ids),
+    groups,
+    ids: new Set(),
     dates: {...records},
     revisions: new Map(revisions),
     draftRows: [...entries.rows],
   };
   entries.replaceChildren();
-  const row = addRow();
-  row.querySelector('[name=date]').value = date;
-  const hole = row.querySelector('[name=hole]');
-  hole.value = ids.join(', ');
-  hole.removeAttribute('maxlength');
-  const table = entries.closest('table');
-  table.classList.replace('entry-table', 'record-edit-table');
-  $('entry-title').textContent = `${date} 타설기록 수정`;
-  $('entry-help').textContent = '그날의 전체 홀 번호를 쉼표로 구분해 입력하세요. 목록에서 뺀 홀은 저장할 때 삭제됩니다.';
+  entries.closest('table').classList.replace('entry-table', 'record-edit-table');
+  $('entry-title').textContent = '타설기록 수정';
+  $('entry-help').textContent = '날짜별 홀 번호를 쉼표로 구분하세요. 목록에서 뺀 홀은 삭제되며, 한 번에 최대 100개 홀의 기록을 변경할 수 있습니다.';
   $('add').hidden = true;
-  message('');
-  openEntryDialog();
-  hole.focus();
-}
+  $('save-records').textContent = '수정 저장';
+  $('save-records').hidden = groups.length === 0;
+  $('entry-table-shell').hidden = groups.length === 0;
+  message(groups.length ? '' : '수정할 타설기록이 없습니다.');
+  const first = appendEditPage();
+  openEntryDialog(first || $('close-entry'));
+};
+$('edit-more').onclick = () => {
+  if (editing && !saving) appendEditPage()?.focus();
+};
 function closeEntryDialog() {
   $('entries').close();
   if (!editing) return;
@@ -520,12 +528,16 @@ function closeEntryDialog() {
   $('entry-title').textContent = entryTitle;
   $('entry-help').textContent = entryHelp;
   $('add').hidden = false;
+  $('edit-more').hidden = true;
+  $('save-records').textContent = '기록 저장';
+  $('save-records').hidden = false;
+  $('entry-table-shell').hidden = false;
   message('');
 }
 $('new-record').onclick = () => {
   if (saving || !canEditRecords()) return;
   if (!entries.rows.length) addRow();
-  openEntryDialog();
+  openEntryDialog(entries.querySelector('[name=date]'));
 };
 $('close-entry').onclick = () => {
   if (!saving) closeEntryDialog();
@@ -559,7 +571,7 @@ async function writeRecords() {
     }
     message('');
     closeEntryDialog();
-    if (wasEditing) $('new-record').focus();
+    if (wasEditing) $('edit-records').focus();
     const removed = items.length - updated.length;
     const saved = updated.length ? `${updated.length}개 홀의 타설완료일을 저장했습니다.` : '';
     const deleted = removed ? `${removed}개 홀의 기록을 삭제했습니다.` : '';
@@ -660,9 +672,9 @@ $('entry-form').addEventListener('submit',event=>{
     return {holes:row.querySelector('[name=hole]').value, date};
   });
   if (editing) {
-    const {items, error, field} = CompletionTools.editItems(input[0], editing, byId, maximumRows);
+    const {items, error, field, index} = CompletionTools.editItems(input, editing, byId, maximumRows);
     if (error) {
-      const invalid = field && rows[0].querySelector(`[name=${field}]`);
+      const invalid = rows[index]?.querySelector(`[name=${field}]`);
       invalid?.setAttribute('aria-invalid', 'true');
       invalid?.focus();
       return message(error, 'error');
@@ -903,6 +915,7 @@ async function load() {
     $('mypage-menu').hidden = false;
     if (editableRoles.has(user.role)) {
       $('new-record').hidden=false;
+      $('edit-records').hidden=false;
     }
     if (user.role==='admin') {
       $('approvals').hidden = false;

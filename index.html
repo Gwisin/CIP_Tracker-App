@@ -140,7 +140,7 @@
           </div>
         </aside>
         <aside class="board history-panel" aria-labelledby="history-title">
-          <div class="section-title"><div><h2 id="history-title">시공현황</h2><p id="history-count"></p></div><button type="button" class="primary" id="new-record" aria-haspopup="dialog" aria-controls="entries" hidden>기록</button></div>
+          <div class="section-title"><div><h2 id="history-title">시공현황</h2><p id="history-count"></p></div><div class="editor-actions"><button type="button" class="primary" id="new-record" aria-haspopup="dialog" aria-controls="entries" hidden>기록</button><button type="button" id="edit-records" aria-haspopup="dialog" aria-controls="entries" hidden>수정</button></div></div>
           <div id="history-list" class="history-list" tabindex="0" aria-label="일자별 타설 기록"></div>
           <p id="record-message" class="message ok" role="status"></p>
           <button type="button" id="history-more" aria-controls="history-list" hidden>더보기</button>
@@ -170,8 +170,8 @@
   </section>
 </main>
 <dialog id="entries" aria-labelledby="entry-title">
-  <div class="section-title"><div><h2 id="entry-title">타설기록 추가</h2><p id="entry-help">완료일과 홀 번호를 입력하거나 엑셀에서 붙여넣으세요. 같은 날짜의 홀은 쉼표로 구분합니다. H파일과 철근망은 홀 번호로 자동 분류되며, 한 번에 최대 100개 홀을 저장할 수 있습니다. 기존 기록은 시공현황 목록의 날짜 옆 ‘수정’에서도 열 수 있습니다.</p></div><div class="editor-actions"><button type="button" id="add">＋ 행 추가</button><button type="button" id="close-entry">닫기</button></div></div>
-  <form id="entry-form" novalidate><fieldset id="bulk-fields"><div class="table-shell"><table class="completion-table entry-table" aria-label="타설완료일 입력"><colgroup><col class="date-col"><col><col class="remove-col"></colgroup><thead><tr><th scope="col">완료일</th><th scope="col">홀 번호</th><th scope="col" aria-label="입력 행 삭제"></th></tr></thead><tbody id="rows"></tbody></table></div><div class="action-row"><p id="message" class="message" role="status"></p><button class="primary" type="submit">기록 저장</button></div></fieldset></form>
+  <div class="section-title"><div><h2 id="entry-title">타설기록 추가</h2><p id="entry-help">완료일과 홀 번호를 입력하거나 엑셀에서 붙여넣으세요. 같은 날짜의 홀은 쉼표로 구분합니다. H파일과 철근망은 홀 번호로 자동 분류되며, 한 번에 최대 100개 홀을 저장할 수 있습니다.</p></div><div class="editor-actions"><button type="button" id="add">＋ 행 추가</button><button type="button" id="close-entry">닫기</button></div></div>
+  <form id="entry-form" novalidate><fieldset id="bulk-fields"><div class="table-shell" id="entry-table-shell"><table class="completion-table entry-table" aria-label="타설완료일 입력"><colgroup><col class="date-col"><col><col class="remove-col"></colgroup><thead><tr><th scope="col">완료일</th><th scope="col">홀 번호</th><th scope="col" aria-label="입력 행 삭제"></th></tr></thead><tbody id="rows"></tbody></table></div><button type="button" id="edit-more" aria-controls="rows" hidden>더보기</button><div class="action-row"><p id="message" class="message" role="status"></p><button class="primary" type="submit" id="save-records">기록 저장</button></div></fieldset></form>
 </dialog>
 <dialog id="confirm" aria-labelledby="confirm-title"><h2 id="confirm-title">타설기록 변경 확인</h2><p id="changes"></p><form method="dialog" class="action-row"><button value="cancel">취소</button><button class="primary" value="apply">수정 저장</button></form></dialog>
 <script src="./completions.js" defer></script>

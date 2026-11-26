@@ -69,21 +69,25 @@ const CompletionTools = {
     if (items.length > limit) errors.push({index: 0, field: 'hole', reason: `한 번에 최대 ${limit}개 홀을 저장할 수 있습니다.`});
     return {items, errors};
   },
-  editItems(row, snapshot, byId, limit = 100) {
-    const date = normalizeCompletionDate(row.date);
-    const fail = (field, error) => ({field, error});
-    if (!date) return fail('date', '올바른 타설완료일을 입력하세요.');
-    const desired = new Set();
-    const holes = row.holes.trim();
-    for (const value of holes ? holes.split(',') : []) {
-      const id = value.trim();
-      if (!byId.has(id)) return fail('hole', `${id || '(빈 번호)'}: 도면에 있는 홀 번호를 입력하세요.`);
-      if (desired.has(id)) return fail('hole', `${id}: 같은 홀을 한 번만 입력하세요.`);
-      if (!snapshot.ids.has(id) && snapshot.dates[id]) return fail('hole', `${id}: 이미 완료 기록이 있습니다.`);
-      desired.add(id);
+  editItems(rows, snapshot, byId, limit = 100) {
+    const desired = new Map();
+    for (const [index, row] of rows.entries()) {
+      const fail = (field, reason) => ({index, field, error: `${index + 1}행 ${reason}`});
+      const date = normalizeCompletionDate(row.date);
+      if (!date) return fail('date', '올바른 타설완료일을 입력하세요.');
+      const holes = row.holes.trim();
+      for (const value of holes ? holes.split(',') : []) {
+        const id = value.trim();
+        if (!byId.has(id)) return fail('hole', `${id || '(빈 번호)'}: 도면에 있는 홀 번호를 입력하세요.`);
+        if (desired.has(id)) return fail('hole', `${id}: 같은 홀을 한 번만 입력하세요.`);
+        if (!snapshot.ids.has(id) && snapshot.dates[id]) {
+          return fail('hole', `${id}: ${snapshot.dates[id]}에 이미 완료 기록이 있습니다. 더보기로 해당 날짜를 불러오세요.`);
+        }
+        desired.set(id, date);
+      }
     }
     const items = [];
-    for (const id of desired) {
+    for (const [id, date] of desired) {
       if (date !== snapshot.dates[id]) items.push({id, date, expectedRevision: snapshot.revisions.get(id) || 0});
     }
     for (const id of snapshot.ids) {
