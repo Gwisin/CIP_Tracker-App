@@ -3,6 +3,8 @@ let holes = [];
 let byId = new Map();
 let records = Object.create(null);
 let user;
+let completionDays = [];
+let rigAssignments;
 const revisions = new Map();
 const memos = new Map();
 const savingMemos = new Set();
@@ -11,9 +13,21 @@ const roleName = {admin:'관리자', editor:'편집 가능', viewer:'조회 전�
 const $ = id => document.getElementById(id);
 const map = $('map');
 const mapSurface = map.closest('.map-surface') || map;
+const mapWrap = map.closest('.map-wrap');
+const holePopup = $('hole-popup');
+let popupTrigger = map;
+const mainViews = {
+  tracker: 'tracker-menu',
+  'record-manager': 'records-menu',
+  mypage: 'mypage-menu',
+};
+let mainView = 'tracker';
 const overview = {zoom:1, x:353.5, y:398.5, selected:null};
 const state = {...overview};
 const dayInMilliseconds = 86400000;
+const progressPercent = new Intl.NumberFormat('ko-KR', {
+  style:'percent', minimumFractionDigits:1, maximumFractionDigits:1,
+});
 const projectDateFormat = new Intl.DateTimeFormat('en-CA', {
   timeZone:'Asia/Seoul', year:'numeric', month:'2-digit', day:'2-digit',
 });
@@ -61,8 +75,11 @@ function projectToday() {
 function dayNumber(date) {
   return Date.parse(date + 'T00:00:00Z') / dayInMilliseconds;
 }
+function dateAtDay(day) {
+  return new Date(day * dayInMilliseconds).toISOString().slice(0, 10);
+}
 function canEditRecords() {
-  return !pastDate && editableRoles.has(user?.role);
+  return editableRoles.has(user?.role) && (!pastDate || mainView === 'record-manager');
 }
 function completionOnDate(id) {
   const date = records[id];
@@ -89,6 +106,43 @@ function renderMetrics() {
     ? `선택일 완료 ${count}개 · H파일 ${daily.h}개 · 철근망 ${daily.cip}개`
     : '선택일 완료 기록 없음';
 }
+function renderProgress(selectedDate) {
+  const cutoff = dateAtDay(dayNumber(selectedDate) - 1);
+  $('rig-cutoff').textContent = `전일 마감 ${cutoff}`;
+  const rigRows = CompletionTools.rigProgress(rigAssignments, records, cutoff).map(({label, h, cip}) => {
+    const row = document.createElement('tr');
+    if (label === '합계') row.className = 'progress-total';
+    const name = document.createElement('th');
+    name.scope = 'row';
+    name.textContent = label;
+    row.append(name);
+    for (const {daily, cumulative, planned} of [h, cip]) {
+      row.insertCell().textContent = daily;
+      const count = row.insertCell();
+      count.append(`${cumulative} / ${planned}`);
+      const percentage = document.createElement('span');
+      percentage.className = 'progress-rate';
+      percentage.textContent = planned ? progressPercent.format(cumulative / planned) : '—';
+      count.append(percentage);
+    }
+    return row;
+  });
+  $('rig-progress').replaceChildren(...rigRows);
+
+  const dailyRows = completionDays.filter(({date}) => date <= selectedDate).slice(0, 3).map(({date, h, cip}) => {
+    const row = document.createElement('tr');
+    const heading = document.createElement('th');
+    heading.scope = 'row';
+    heading.textContent = date;
+    row.append(heading);
+    row.insertCell().textContent = h.length;
+    row.insertCell().textContent = cip.length;
+    return row;
+  });
+  $('daily-progress').replaceChildren(...dailyRows);
+  $('daily-progress-empty').hidden = dailyRows.length !== 0;
+}
+
 function renderTimeline() {
   const selectedDate = pastDate || today;
   timeline.value = dayNumber(selectedDate);
@@ -100,6 +154,7 @@ function renderTimeline() {
   $('timeline-today').disabled = !pastDate;
   $('tracker').classList.toggle('historical-view', Boolean(pastDate));
   renderMetrics();
+  renderProgress(selectedDate);
 }
 function refreshTimeline() {
   today = projectToday();
@@ -116,7 +171,7 @@ function refreshTimeline() {
   renderTimeline();
 }
 function selectTimelineDay(day) {
-  const date = new Date(day * dayInMilliseconds).toISOString().slice(0, 10);
+  const date = dateAtDay(day);
   pastDate = date < today ? date : null;
   renderTimeline();
   render();
@@ -133,17 +188,13 @@ function checkProjectDate() {
 }
 function renderInspector() {
   const hole = byId.get(state.selected);
-  const canEdit = canEditRecords();
-  $('selection-empty').hidden = Boolean(hole);
-  $('hole-info').hidden = !hole;
-  $('clear-selection').hidden = !hole;
   $('detail').disabled = !hole;
-  if (!hole) {
-    inspectorId = null;
-    return;
-  }
+  if (!hole || holePopup.hidden) return;
+  const canEdit = canEditRecords();
   const kind = typeOf(hole.id);
-  $('selected-kind').textContent = kind === 'h' ? 'H파일' : '철근망';
+  const rigIndex = rigAssignments.byHole.get(hole.id);
+  const label = kind === 'h' ? 'H파일' : '철근망';
+  $('selected-kind').textContent = rigIndex === undefined ? label : `${label} · ${rigIndex + 1}호기`;
   $('selected-number').textContent = hole.id;
   const date = completionOnDate(hole.id);
   $('selected-status').textContent = date ? '타설 완료' : incompleteLabel(hole.id);
@@ -163,8 +214,24 @@ function renderInspector() {
     memo.value = memos.get(hole.id)?.memo || '';
     setMessage('memo-message', isSaving ? '메모를 저장하는 중입니다.' : '');
   }
+  positionHolePopup(hole);
 }
-function selectHole(id, {zoom = false} = {}) {
+function positionHolePopup(hole) {
+  const {x, y} = project(hole);
+  const inset = 8;
+  const maxLeft = mapWrap.clientWidth - holePopup.offsetWidth - inset;
+  const maxTop = viewport.height - holePopup.offsetHeight - inset;
+  const left = x + 12 <= maxLeft ? x + 12 : x - holePopup.offsetWidth - 12;
+  holePopup.style.left = `${Math.max(inset, Math.min(maxLeft, left))}px`;
+  holePopup.style.top = `${Math.max(inset, Math.min(maxTop, y + 12))}px`;
+}
+function closeHolePopup(restoreFocus = false) {
+  if (holePopup.hidden) return;
+  holePopup.hidden = true;
+  inspectorId = null;
+  if (restoreFocus) popupTrigger.focus({preventScroll:true});
+}
+function selectHole(id, {zoom = false, trigger = map} = {}) {
   if (saving || !byId.has(id)) return;
   state.selected = id;
   if (zoom && viewport) {
@@ -172,7 +239,10 @@ function selectHole(id, {zoom = false} = {}) {
     state.y = byId.get(id).y;
     state.zoom = Math.min(zoomLimit, 14 / (viewport.scale / state.zoom));
   }
+  popupTrigger = trigger;
+  holePopup.hidden = false;
   render();
+  $('close-hole-popup').focus({preventScroll:true});
 }
 function render() {
   const {width,height} = map.getBoundingClientRect();
@@ -277,12 +347,15 @@ $('overview').onclick=()=>setView(false);
 $('detail').onclick=()=>setView(true);
 $('zoom-in').onclick=()=>zoomBy(1.5);
 $('zoom-out').onclick=()=>zoomBy(1/1.5);
-$('clear-selection').onclick=()=>{
-  if (saving) return;
-  state.selected = null;
-  render();
-  $('hole-query').focus();
-};
+$('close-hole-popup').onclick = () => closeHolePopup(true);
+mapWrap.addEventListener('keydown', event => {
+  if (event.key !== 'Escape' || holePopup.hidden) return;
+  event.preventDefault();
+  closeHolePopup(true);
+});
+new ResizeObserver(() => {
+  if (!holePopup.hidden && viewport && byId.has(state.selected)) positionHolePopup(byId.get(state.selected));
+}).observe(holePopup);
 $('hole-search').onsubmit=event=>{
   event.preventDefault();
   if (saving) return;
@@ -296,7 +369,7 @@ $('hole-search').onsubmit=event=>{
     return;
   }
   input.removeAttribute('aria-invalid');
-  selectHole(id, {zoom:true});
+  selectHole(id, {zoom:true, trigger:input});
   $('search-message').className = 'message';
   $('search-message').textContent = `${id}번 홀을 선택했습니다. 홀 상세에서 완료일과 메모를 확인하세요.`;
 };
@@ -352,6 +425,7 @@ function endGesture(event) {
   pointers.delete(event.pointerId);
   if (event.type==='pointerup' && !gestureMoved && !pointers.size) {
     if (point.hole) selectHole(point.hole);
+    else closeHolePopup();
   }
   if (!pointers.size) map.classList.remove('dragging');
 }
@@ -419,6 +493,7 @@ function applyRecords(rows) {
     else records[item.id] = item.date;
     revisions.set(item.id,item.revision);
   }
+  completionDays = CompletionTools.group(records);
   renderHistory();
   refreshTimeline();
 }
@@ -429,14 +504,17 @@ function recordHoleButton(id, label) {
   button.textContent = id;
   button.setAttribute('aria-label', `${label} ${id} 도면에서 보기`);
   button.onclick = () => {
-    selectHole(id, {zoom:true});
+    showMainView('tracker');
+    if (pastDate && records[id] > pastDate) {
+      selectTimelineDay(Math.min(dayNumber(records[id]), dayNumber(today)));
+    }
     map.scrollIntoView({block:'center'});
-    map.focus({preventScroll:true});
+    selectHole(id, {zoom:true});
   };
   return button;
 }
 function renderHistory() {
-  const groups = CompletionTools.group(records);
+  const groups = completionDays;
   $('history-count').textContent = `${groups.length}일 · ${Object.keys(records).length}개 홀`;
   const list = $('history-list');
   list.replaceChildren();
@@ -496,7 +574,7 @@ function appendEditPage() {
 }
 $('edit-records').onclick = () => {
   if (saving || $('entries').open || !canEditRecords()) return;
-  const groups = CompletionTools.group(records);
+  const groups = completionDays;
   editing = {
     groups,
     ids: new Set(),
@@ -704,26 +782,28 @@ function showGate(title,text,{signIn=false,reload=false}={}) {
   $('google').hidden=!signIn;
   $('reload').hidden=!reload;
 }
-function showMainView(mypage) {
-  $('tracker').hidden = mypage;
-  $('mypage').hidden = !mypage;
-  const active = mypage ? 'mypage-menu' : 'tracker-menu';
-  const inactive = mypage ? 'tracker-menu' : 'mypage-menu';
-  $(active).setAttribute('aria-current', 'page');
-  $(inactive).removeAttribute('aria-current');
-  if (mypage) {
-    if (user.role === 'admin') loadUsers();
-  } else {
-    render();
+function showMainView(view) {
+  closeHolePopup();
+  mainView = view;
+  for (const [panel, menu] of Object.entries(mainViews)) {
+    const active = panel === view;
+    $(panel).hidden = !active;
+    if (active) $(menu).setAttribute('aria-current', 'page');
+    else $(menu).removeAttribute('aria-current');
   }
+  if (view === 'tracker') render();
+  if (view === 'mypage' && user.role === 'admin') loadUsers();
 }
-$('tracker-menu').onclick = () => {
-  showMainView(false);
+for (const [view, menu] of Object.entries(mainViews)) {
+  $(menu).onclick = () => {
+    showMainView(view);
+    window.scrollTo(0, 0);
+  };
+}
+$('view-records').onclick = () => {
+  showMainView('record-manager');
   window.scrollTo(0, 0);
-};
-$('mypage-menu').onclick = () => {
-  showMainView(true);
-  window.scrollTo(0, 0);
+  $('history-title').focus({preventScroll:true});
 };
 async function loadUsers() {
   const request = ++usersRequest;
@@ -904,6 +984,7 @@ async function load() {
     const data=await api('/api/holes');
     holes=data.holes;
     byId=new Map(holes.map(hole=>[hole.id,hole]));
+    rigAssignments = CompletionTools.assignRigs(holes);
     for (const [id, revision] of Object.entries(data.deletedRevisions || {})) revisions.set(id, revision);
     for (const memo of data.memos || []) memos.set(memo.id, memo);
     applyRecords(data.records);
@@ -912,6 +993,7 @@ async function load() {
     document.body.classList.remove('gate-open', 'login-open');
     $('header-title').hidden = true;
     $('tracker-menu').hidden = false;
+    $('records-menu').hidden = false;
     $('mypage-menu').hidden = false;
     if (editableRoles.has(user.role)) {
       $('new-record').hidden=false;
@@ -921,7 +1003,7 @@ async function load() {
       $('approvals').hidden = false;
       loadUsers();
     }
-    showMainView(false);
+    showMainView('tracker');
     window.addEventListener('focus', checkProjectDate);
     window.setInterval(checkProjectDate, 60000);
   } catch (error) {

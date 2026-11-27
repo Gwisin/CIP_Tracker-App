@@ -13,7 +13,53 @@ function normalizeCompletionDate(value) {
 
 const completionFields = ['date', 'hole'];
 const completionType = id => id.includes('-') ? 'cip' : 'h';
+// A reinforcement cage belongs to the range of its H-file prefix.
+const rigRanges = [
+  {h: [[97, 169], [249, 289]], cip: [[97, 175], [249, 289]]},
+  {h: [[317, 395]], cip: [[317, 395]]},
+  {h: [[1, 96], [290, 316], [396, 397]], cip: [[1, 96], [290, 316], [396, 397]]},
+  {h: [[170, 248]], cip: [[176, 248]]},
+];
+
 const CompletionTools = {
+  assignRigs(holes) {
+    const byHole = new Map();
+    const planned = rigRanges.map(() => ({h: 0, cip: 0}));
+    for (const {id} of holes) {
+      const type = completionType(id);
+      const prefix = Number(id.split('-')[0]);
+      const index = rigRanges.findIndex(ranges => ranges[type].some(([first, last]) => first <= prefix && prefix <= last));
+      if (index < 0) continue;
+      byHole.set(id, index);
+      planned[index][type]++;
+    }
+    return {byHole, planned};
+  },
+  rigProgress(assignments, records, cutoff) {
+    const rows = assignments.planned.map((planned, index) => ({
+      label: `${index + 1}호기`,
+      h: {planned: planned.h, daily: 0, cumulative: 0},
+      cip: {planned: planned.cip, daily: 0, cumulative: 0},
+    }));
+    for (const [id, date] of Object.entries(records)) {
+      const index = assignments.byHole.get(id);
+      if (index === undefined || date > cutoff) continue;
+      const values = rows[index][completionType(id)];
+      values.cumulative++;
+      if (date === cutoff) values.daily++;
+    }
+    const total = {
+      label: '합계',
+      h: {planned: 0, daily: 0, cumulative: 0},
+      cip: {planned: 0, daily: 0, cumulative: 0},
+    };
+    for (const row of rows) {
+      for (const type of ['h', 'cip']) {
+        for (const key of ['planned', 'daily', 'cumulative']) total[type][key] += row[type][key];
+      }
+    }
+    return [...rows, total];
+  },
   parsePaste(text, startColumn, availableRows, limit = 100) {
     const lines = text.replace(/^\uFEFF/, '').replace(/[\r\n]+$/, '').split(/\r\n|\n|\r/);
     const cells = lines.map(line => line.split('\t').map(value => value.trim().replace(/^"(.*)"$/, '$1').trim()));

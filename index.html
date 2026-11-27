@@ -20,6 +20,7 @@
     <button class="brand" type="button" id="tracker-menu" aria-controls="tracker" hidden>토목공사 공정현황</button>
     <div class="account" id="account" hidden>
       <div class="account-identity"><strong id="account-name"></strong><span id="account-company"></span></div>
+      <button class="header-action" type="button" id="records-menu" aria-controls="record-manager" hidden>기록관리</button>
       <button class="header-action" type="button" id="mypage-menu" aria-controls="mypage" hidden>마이페이지<span id="pending-count" hidden></span></button>
       <button class="header-action" type="button" id="logout">로그아웃</button>
     </div>
@@ -86,6 +87,20 @@
           <div class="map-surface">
             <svg id="map" role="img" tabindex="0" aria-label="CIP 홀 배치도. 휠, 두 손가락 또는 더하기와 빼기로 확대·축소하고 화살표로 이동합니다. 홀 번호 검색으로도 선택할 수 있습니다."></svg>
           </div>
+          <section class="inspector board" id="hole-popup" role="dialog" aria-labelledby="selected-title selected-number" hidden>
+            <div class="inspector-heading"><h2 id="selected-title">홀 상세</h2><button type="button" id="close-hole-popup">닫기</button></div>
+            <div>
+              <p class="eyebrow" id="selected-kind"></p><h3 class="hole-number" id="selected-number"></h3>
+              <p class="status-badge" id="selected-status"></p>
+              <dl class="hole-facts"><div><dt>타설 완료일</dt><dd id="selected-date"></dd></div></dl>
+              <form id="memo-form" hidden>
+                <label for="hole-memo">메모</label>
+                <textarea id="hole-memo" rows="2" maxlength="1000" placeholder="현장 특이사항을 입력하세요." aria-describedby="memo-message"></textarea>
+                <div class="memo-actions"><p id="memo-message" class="message" role="status"></p><button id="save-memo" class="primary" type="submit">메모 저장</button></div>
+              </form>
+              <dl id="memo-readonly" class="memo-readonly" hidden><div><dt id="memo-label">메모</dt><dd id="memo-text"></dd></div></dl>
+            </div>
+          </section>
           <div class="selection" id="selection" role="status"></div>
           <div class="map-navigation" role="group" aria-label="도면 조작">
             <div class="map-navigation-group">
@@ -106,7 +121,7 @@
             <span><i class="swatch timeline-marker" aria-hidden="true"></i>선택일 완료</span>
           </div>
         </div>
-        <section class="map-timeline" aria-label="일자별 시공현황">
+        <section class="map-timeline" aria-label="날짜별 도면 탐색">
           <div class="timeline-heading">
             <div><label for="timeline-date">조회 기준일</label> <strong id="timeline-selected"></strong></div>
             <button type="button" id="timeline-today">오늘</button>
@@ -123,31 +138,34 @@
           </div>
         </section>
       </section>
-      <div class="dashboard-sidebar">
-        <aside class="inspector board" aria-labelledby="selected-title">
-          <div class="inspector-heading"><h2 id="selected-title">홀 상세</h2><button type="button" id="clear-selection" aria-label="홀 선택 해제" hidden>해제</button></div>
-          <div id="selection-empty" class="empty-selection"><span class="empty-mark" aria-hidden="true">⌖</span><h3>확인할 홀을 선택하세요.</h3><p>도면의 홀을 누르거나 번호로 검색하면 완료일과 메모를 확인할 수 있습니다.</p></div>
-          <div id="hole-info" hidden>
-            <p class="eyebrow" id="selected-kind"></p><h3 class="hole-number" id="selected-number"></h3>
-            <p class="status-badge" id="selected-status"></p>
-            <dl class="hole-facts"><div><dt>타설 완료일</dt><dd id="selected-date"></dd></div></dl>
-            <form id="memo-form" hidden>
-              <label for="hole-memo">메모</label>
-              <textarea id="hole-memo" rows="3" maxlength="1000" placeholder="현장 특이사항을 입력하세요." aria-describedby="memo-message"></textarea>
-              <div class="memo-actions"><p id="memo-message" class="message" role="status"></p><button id="save-memo" class="primary" type="submit">메모 저장</button></div>
-            </form>
-            <dl id="memo-readonly" class="memo-readonly" hidden><div><dt id="memo-label">메모</dt><dd id="memo-text"></dd></div></dl>
-          </div>
-        </aside>
-        <aside class="board history-panel" aria-labelledby="history-title">
-          <div class="section-title"><div><h2 id="history-title">시공현황</h2><p id="history-count"></p></div><div class="editor-actions"><button type="button" class="primary" id="new-record" aria-haspopup="dialog" aria-controls="entries" hidden>기록</button><button type="button" id="edit-records" aria-haspopup="dialog" aria-controls="entries" hidden>수정</button></div></div>
-          <div id="history-list" class="history-list" tabindex="0" aria-label="일자별 타설 기록"></div>
-          <p id="record-message" class="message ok" role="status"></p>
-          <button type="button" id="history-more" aria-controls="history-list" hidden>더보기</button>
-        </aside>
-      </div>
+      <section class="board progress-panel rig-panel" aria-labelledby="rig-title">
+        <div class="section-title"><div><h2 id="rig-title">호기별 시공현황</h2><p id="rig-cutoff"></p></div></div>
+        <table class="progress-table" aria-describedby="rig-units">
+          <colgroup><col class="rig-name-col"></colgroup><colgroup span="2"></colgroup><colgroup span="2"></colgroup>
+          <thead>
+            <tr><th rowspan="2" scope="col">호기</th><th colspan="2" scope="colgroup">H파일</th><th colspan="2" scope="colgroup">철근망</th></tr>
+            <tr><th scope="col">전일시공</th><th scope="col">전일누계</th><th scope="col">전일시공</th><th scope="col">전일누계</th></tr>
+          </thead>
+          <tbody id="rig-progress"></tbody>
+        </table>
+        <p class="progress-note" id="rig-units">단위 공 · 진척률은 전일누계 ÷ 배정 공수</p>
+      </section>
+      <section class="board progress-panel daily-panel" aria-labelledby="daily-progress-title">
+        <div class="section-title"><div><h2 id="daily-progress-title">일자별 시공현황</h2><p>기준일까지 최근 완료일 3일 · 단위 공</p></div><button type="button" id="view-records" aria-controls="record-manager">홀 번호 보기</button></div>
+        <table class="progress-table">
+          <thead><tr><th scope="col">완료일</th><th scope="col">H파일</th><th scope="col">철근망</th></tr></thead>
+          <tbody id="daily-progress"></tbody>
+        </table>
+        <p class="progress-note" id="daily-progress-empty" hidden>기준일까지 등록된 타설기록이 없습니다.</p>
+      </section>
     </div>
   </div>
+  <section class="board history-panel" id="record-manager" aria-labelledby="history-title" hidden>
+    <div class="section-title"><div><h1 id="history-title" tabindex="-1">기록관리</h1><p id="history-count"></p></div><div class="editor-actions"><button type="button" class="primary" id="new-record" aria-haspopup="dialog" aria-controls="entries" hidden>기록</button><button type="button" id="edit-records" aria-haspopup="dialog" aria-controls="entries" hidden>수정</button></div></div>
+    <div id="history-list" class="history-list" tabindex="0" aria-label="일자별 타설 기록"></div>
+    <p id="record-message" class="message ok" role="status"></p>
+    <button type="button" id="history-more" aria-controls="history-list" hidden>더보기</button>
+  </section>
   <section class="mypage" id="mypage" aria-labelledby="mypage-title" hidden>
     <h1 id="mypage-title">마이페이지</h1>
     <dl class="mypage-profile">
