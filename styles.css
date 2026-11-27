@@ -405,7 +405,8 @@ button.header-action[aria-current="page"] { background: var(--soft); padding-inl
 .progress-table th, .progress-table td { text-align: center; vertical-align: middle; padding: 7px 4px; font-variant-numeric: tabular-nums; font-size: var(--app-text-small); }
 .progress-table tbody th { color: var(--ink); background: transparent; border-bottom: 1px solid #e6edf1; }
 .progress-table .progress-total > * { font-weight: 700; background: var(--soft); }
-.rig-name-col { width: 17%; }
+.rig-name-col { width: 15%; }
+.rig-subtotal-col { width: 11%; }
 .daily-panel th:first-child { width: 40%; }
 .progress-rate { display: block; color: var(--teal); font-weight: 650; }
 .progress-note { margin-top: 8px; font-size: var(--app-text-small); }
