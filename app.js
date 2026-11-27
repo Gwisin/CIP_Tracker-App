@@ -117,6 +117,12 @@ function renderRigProgress(selectedDate) {
     const name = document.createElement('th');
     name.scope = 'row';
     name.textContent = label;
+    if (label !== '합계') {
+      const allocation = document.createElement('span');
+      allocation.className = 'rig-allocation';
+      allocation.textContent = `(${h.planned + cip.planned}공)`;
+      name.append(allocation);
+    }
     row.append(name);
     row.insertCell().textContent = h.daily + cip.daily;
     for (const {daily, cumulative, planned} of [h, cip]) {
