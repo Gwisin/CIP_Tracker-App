@@ -71,6 +71,7 @@ main { width: 100%; max-width: 1800px; margin: auto; padding: 26px 28px 36px; }
 .board { background: #fff; border: 1px solid var(--line); border-radius: 8px; margin-bottom: 16px; }
 .dashboard-layout { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; align-items: start; margin-bottom: 16px; }
 .dashboard-layout .board { margin-bottom: 0; }
+.dashboard-sidebar { display: grid; grid-template-columns: minmax(0, 1fr); gap: 16px; min-width: 0; }
 .drawing { min-width: 0; overflow: hidden; }
 .drawing-toolbar { padding: 14px 18px; }
 #hole-search { display: flex; gap: 7px; width: min(100%, 340px); }
@@ -410,12 +411,8 @@ button.header-action[aria-current="page"] { background: var(--soft); padding-inl
     --map-overhead: 425px;
     --preferred-map-height: max(380px, calc(100dvh - var(--map-overhead)));
     grid-template-columns: min(calc(var(--preferred-map-height) * .9 + 2px), calc(100% - 326px)) minmax(310px, 720px);
-    grid-template-rows: auto 1fr;
     justify-content: center;
   }
-  .drawing { grid-column: 1; grid-row: 1; }
-  .rig-panel { grid-column: 2; grid-row: 1 / span 2; }
-  .daily-panel { grid-column: 1; grid-row: 2; }
   #map { min-height: 380px; aspect-ratio: 9 / 10; }
 }
 @media (max-width: 700px) {
