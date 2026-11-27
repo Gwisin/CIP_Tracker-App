@@ -118,6 +118,7 @@ function renderRigProgress(selectedDate) {
     name.scope = 'row';
     name.textContent = label;
     row.append(name);
+    row.insertCell().textContent = h.daily + cip.daily;
     for (const {daily, cumulative, planned} of [h, cip]) {
       row.insertCell().textContent = daily;
       const count = row.insertCell();
@@ -137,12 +138,13 @@ function renderDailyProgress(selectedDate) {
     dailyProgressLimit = dailyProgressPageSize;
   }
   const days = completionDays.filter(({date}) => date <= selectedDate);
-  const dailyRows = days.slice(0, dailyProgressLimit).map(({date, h, cip}) => {
+  const dailyRows = days.slice(0, dailyProgressLimit).map(({date, total, h, cip}) => {
     const row = document.createElement('tr');
     const heading = document.createElement('th');
     heading.scope = 'row';
     heading.textContent = date;
     row.append(heading);
+    row.insertCell().textContent = total;
     row.insertCell().textContent = h.length;
     row.insertCell().textContent = cip.length;
     return row;
