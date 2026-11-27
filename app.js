@@ -32,6 +32,10 @@ const projectDateFormat = new Intl.DateTimeFormat('en-CA', {
   timeZone:'Asia/Seoul', year:'numeric', month:'2-digit', day:'2-digit',
 });
 const timeline = $('timeline-date');
+const rigDate = $('rig-date');
+const dailyProgressPageSize = 10;
+let dailyProgressLimit = dailyProgressPageSize;
+let dailyProgressDate;
 let today = projectToday();
 let firstDate = today;
 let pastDate = null;
@@ -106,10 +110,8 @@ function renderMetrics() {
     ? `선택일 완료 ${count}개 · H파일 ${daily.h}개 · 철근망 ${daily.cip}개`
     : '선택일 완료 기록 없음';
 }
-function renderProgress(selectedDate) {
-  const cutoff = dateAtDay(dayNumber(selectedDate) - 1);
-  $('rig-cutoff').textContent = `전일 마감 ${cutoff}`;
-  const rigRows = CompletionTools.rigProgress(rigAssignments, records, cutoff).map(({label, h, cip}) => {
+function renderRigProgress(selectedDate) {
+  const rigRows = CompletionTools.rigProgress(rigAssignments, records, selectedDate).map(({label, h, cip}) => {
     const row = document.createElement('tr');
     if (label === '합계') row.className = 'progress-total';
     const name = document.createElement('th');
@@ -128,8 +130,14 @@ function renderProgress(selectedDate) {
     return row;
   });
   $('rig-progress').replaceChildren(...rigRows);
-
-  const dailyRows = completionDays.filter(({date}) => date <= selectedDate).slice(0, 3).map(({date, h, cip}) => {
+}
+function renderDailyProgress(selectedDate) {
+  if (selectedDate !== dailyProgressDate) {
+    dailyProgressDate = selectedDate;
+    dailyProgressLimit = dailyProgressPageSize;
+  }
+  const days = completionDays.filter(({date}) => date <= selectedDate);
+  const dailyRows = days.slice(0, dailyProgressLimit).map(({date, h, cip}) => {
     const row = document.createElement('tr');
     const heading = document.createElement('th');
     heading.scope = 'row';
@@ -141,11 +149,26 @@ function renderProgress(selectedDate) {
   });
   $('daily-progress').replaceChildren(...dailyRows);
   $('daily-progress-empty').hidden = dailyRows.length !== 0;
+  const more = $('daily-progress-more');
+  const remaining = days.length - dailyRows.length;
+  more.hidden = remaining === 0;
+  more.textContent = `더보기 · ${remaining}일 남음`;
 }
+$('daily-progress-more').onclick = () => {
+  const firstNewIndex = dailyProgressLimit;
+  dailyProgressLimit += dailyProgressPageSize;
+  renderDailyProgress(pastDate || today);
+  const heading = $('daily-progress').rows[firstNewIndex]?.cells[0];
+  if (heading) {
+    heading.tabIndex = -1;
+    heading.focus();
+  }
+};
 
 function renderTimeline() {
   const selectedDate = pastDate || today;
   timeline.value = dayNumber(selectedDate);
+  rigDate.value = selectedDate;
   const label = pastDate ? selectedDate : selectedDate + ' · 오늘';
   $('timeline-selected').textContent = label;
   timeline.setAttribute('aria-valuetext', label);
@@ -154,7 +177,8 @@ function renderTimeline() {
   $('timeline-today').disabled = !pastDate;
   $('tracker').classList.toggle('historical-view', Boolean(pastDate));
   renderMetrics();
-  renderProgress(selectedDate);
+  renderRigProgress(selectedDate);
+  renderDailyProgress(selectedDate);
 }
 function refreshTimeline() {
   today = projectToday();
@@ -166,6 +190,8 @@ function refreshTimeline() {
   if (pastDate && pastDate >= today) pastDate = null;
   timeline.min = dayNumber(firstDate);
   timeline.max = dayNumber(today);
+  rigDate.min = firstDate;
+  rigDate.max = today;
   timeline.disabled = firstDate === today;
   $('timeline-start').textContent = firstDate === today ? '' : firstDate;
   renderTimeline();
@@ -177,6 +203,10 @@ function selectTimelineDay(day) {
   render();
 }
 timeline.oninput = () => selectTimelineDay(timeline.valueAsNumber);
+rigDate.onchange = () => {
+  if (rigDate.validity.valid) selectTimelineDay(dayNumber(rigDate.value));
+  else rigDate.value = pastDate || today;
+};
 $('timeline-prev').onclick = () => selectTimelineDay(timeline.valueAsNumber - 1);
 $('timeline-next').onclick = () => selectTimelineDay(timeline.valueAsNumber + 1);
 $('timeline-today').onclick = () => selectTimelineDay(Number(timeline.max));
@@ -247,7 +277,8 @@ function selectHole(id, {zoom = false, trigger = map} = {}) {
 function render() {
   const {width,height} = map.getBoundingClientRect();
   if (!width || !height) return;
-  viewport = {width,height,scale:Math.min((width-64)/707,(height-110)/797)*state.zoom};
+  const verticalPadding = Math.min(110, height * .4);
+  viewport = {width,height,scale:Math.min((width-64)/707,(height-verticalPadding)/797)*state.zoom};
   map.setAttribute('viewBox', `0 0 ${width} ${height}`);
   const scene = document.createDocumentFragment();
   const detail = viewport.scale >= 4;
@@ -442,6 +473,22 @@ map.addEventListener('keydown',event=>{
   event.preventDefault();
 });
 new ResizeObserver(render).observe(map);
+const wideLayout = matchMedia('(min-width: 850px) and (orientation: landscape)');
+const timelinePanel = timeline.closest('.map-timeline');
+const drawing = map.closest('.drawing');
+function fitWideMap() {
+  if (!wideLayout.matches || !$('tracker').getClientRects().length) return;
+  // Measure the controls and surrounding layout separately from the SVG height.
+  const timelineBottom = timelinePanel.getBoundingClientRect().bottom + window.scrollY;
+  const surroundingHeight = timelineBottom - map.getBoundingClientRect().height;
+  const height = Math.floor(window.innerHeight - surroundingHeight - 8);
+  drawing.style.setProperty('--wide-map-height', `${height}px`);
+}
+const drawingChromeObserver = new ResizeObserver(fitWideMap);
+for (const selector of ['.site-header', '.tracker-summary', '.drawing-toolbar', '.map-navigation', '.map-footer', '.map-timeline']) {
+  drawingChromeObserver.observe(document.querySelector(selector));
+}
+window.addEventListener('resize', fitWideMap);
 
 function addRow() {
   const row=document.createElement('tr');
