@@ -144,18 +144,17 @@
             <h2 id="rig-title">호기별 시공현황</h2>
             <label class="progress-date" for="rig-date">기준일 <input type="date" id="rig-date" required></label>
           </div>
-          <table class="progress-table" aria-describedby="rig-units">
+          <table class="progress-table">
             <colgroup><col class="rig-name-col"><col class="rig-subtotal-col"></colgroup><colgroup span="2"></colgroup><colgroup span="2"></colgroup>
             <thead>
               <tr><th rowspan="2" scope="col">호기</th><th rowspan="2" scope="col">소계</th><th colspan="2" scope="colgroup">H파일</th><th colspan="2" scope="colgroup">철근망</th></tr>
-              <tr><th scope="col">기준일 시공</th><th scope="col">기준일 누계</th><th scope="col">기준일 시공</th><th scope="col">기준일 누계</th></tr>
+              <tr><th scope="col">기준일</th><th scope="col">누계</th><th scope="col">기준일</th><th scope="col">누계</th></tr>
             </thead>
             <tbody id="rig-progress"></tbody>
           </table>
-          <p class="progress-note" id="rig-units">단위 공 · 소계는 기준일 시공량 합계 · 진척률은 기준일 누계 ÷ 배정 공수</p>
         </section>
         <section class="board progress-panel daily-panel" aria-labelledby="daily-progress-title">
-          <div class="section-title"><div><h2 id="daily-progress-title">일자별 시공현황</h2><p>기준일까지 완료일 10일씩 · 단위 공</p></div><button type="button" id="view-records" aria-controls="record-manager">홀 번호 보기</button></div>
+          <div class="section-title"><h2 id="daily-progress-title">일자별 시공현황</h2><button type="button" id="view-records" aria-controls="record-manager">홀 번호 보기</button></div>
           <table class="progress-table">
             <thead><tr><th scope="col">완료일</th><th scope="col">공</th><th scope="col">H파일</th><th scope="col">철근망</th></tr></thead>
             <tbody id="daily-progress"></tbody>

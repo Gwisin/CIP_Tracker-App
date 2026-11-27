@@ -400,12 +400,13 @@ button.header-action[aria-current="page"] { background: var(--soft); padding-inl
 .progress-panel .section-title { margin-bottom: 10px; }
 .progress-panel .section-title button { font-size: var(--app-text-small); }
 .progress-date { display: flex; align-items: center; gap: 6px; white-space: nowrap; color: var(--muted); font-size: var(--app-text-small); }
-.progress-date input { width: auto; }
+.progress-date input { width: auto; font-size: clamp(12px, 1.1vw, 14px); }
 #daily-progress-more { width: 100%; margin-top: 8px; color: var(--teal); }
 .progress-table th, .progress-table td { text-align: center; vertical-align: middle; padding: 7px 4px; font-variant-numeric: tabular-nums; font-size: var(--app-text-small); }
 .progress-table tbody th { color: var(--ink); background: transparent; border-bottom: 1px solid #e6edf1; }
 .progress-table .progress-total > * { font-weight: 700; background: var(--soft); }
 .rig-name-col { width: 15%; }
+.rig-allocation { display: block; color: var(--muted); font-size: .9em; font-weight: 400; white-space: nowrap; }
 .rig-subtotal-col { width: 11%; }
 .daily-panel th:first-child { width: 40%; }
 .progress-rate { display: block; color: var(--teal); font-weight: 650; }
