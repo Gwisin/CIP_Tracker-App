@@ -384,12 +384,28 @@ dialog .action-row { justify-content: flex-end; }
   button, #close-hole-popup, .record-hole { min-height: 44px; }
   .map-navigation button { min-width: 40px; }
 }
+@media (max-width: 380px) {
+  .mast { flex-wrap: wrap; }
+  .account { flex-basis: 100%; justify-content: space-between; }
+}
 
-.history-panel { display: flex; flex-direction: column; gap: 12px; min-width: 0; padding: 18px; }
+body:has(#record-manager:not([hidden])) {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  height: 100dvh;
+}
+body:has(#record-manager:not([hidden])) > main {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+.history-panel { display: flex; flex-direction: column; flex: 1; gap: 12px; min-width: 0; min-height: 12rem; margin-bottom: 0; padding: 18px; }
 .history-panel .section-title { margin: 0; gap: 8px; align-items: center; }
 :is(#new-record, #edit-records) { font-size: var(--app-text-small, 12px); }
 #record-message:empty { display: none; }
-.history-list { max-height: 420px; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
+.history-list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-gutter: stable; }
 .history-card { padding: 14px 0; border-bottom: 1px solid var(--line); }
 .history-card:first-child { padding-top: 0; }
 .history-card h3 { margin: 0 0 10px; font-variant-numeric: tabular-nums; }
