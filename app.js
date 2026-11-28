@@ -48,6 +48,7 @@ const namespace = 'http://www.w3.org/2000/svg';
 const fmtDate = date => date.split('-').slice(1).map(Number).join('/');
 const typeOf = completionType;
 const zoomLimit = 160;
+const detailViewScale = 15;
 const maximumRows = 100;
 const editPageSize = 10;
 let saving = false;
@@ -68,8 +69,8 @@ function draw(layer, tag, attrs, label) {
 function project(hole) {
   return {x:viewport.width/2+(hole.x-state.x)*viewport.scale, y:viewport.height/2+(hole.y-state.y)*viewport.scale};
 }
-function numberFits(hole,size) {
-  return size*1.75 >= hole.id.length*6+3;
+function numberFits(length, size) {
+  return size*1.75 >= length*6+3;
 }
 function projectToday() {
   const parts = projectDateFormat.formatToParts(new Date());
@@ -268,7 +269,7 @@ function selectHole(id, {zoom = false, trigger = map} = {}) {
   if (zoom && viewport) {
     state.x = byId.get(id).x;
     state.y = byId.get(id).y;
-    state.zoom = Math.min(zoomLimit, 14 / (viewport.scale / state.zoom));
+    state.zoom = Math.min(zoomLimit, detailViewScale / (viewport.scale / state.zoom));
   }
   popupTrigger = trigger;
   holePopup.hidden = false;
@@ -283,11 +284,22 @@ function render() {
   map.setAttribute('viewBox', `0 0 ${width} ${height}`);
   const scene = document.createDocumentFragment();
   const detail = viewport.scale >= 4;
-  const step = state.zoom < 1.65 ? 20 : 10;
   const size = Math.max(1,1.39*viewport.scale);
+  // Keep cage labels hidden until a full ID such as 215-1 fits.
+  const showCipLabels = numberFits(5, size);
   const selectedDate = pastDate || today;
   const coordinates = holes.map(hole => ({...hole, ...project(hole), date:completionOnDate(hole.id)}));
-  const visible = coordinates.filter(h => h.x>=-size && h.x<=width+size && h.y>=-size && h.y<=height+size);
+  const visible = coordinates
+    .filter(hole => hole.x>=-size && hole.x<=width+size && hole.y>=-size && hole.y<=height+size)
+    .filter(hole => detail || typeOf(hole.id) === 'h')
+    .map(hole => {
+      const hFile = typeOf(hole.id) === 'h';
+      const referenceNumber = hFile && Number(hole.id) % 5 === 0;
+      const showLabel = referenceNumber || (detail && (hFile || showCipLabels) &&
+        (Boolean(hole.date) || hole.id === state.selected || viewport.scale >= 10));
+      const showDate = detail && showLabel && Boolean(hole.date) && numberFits(hole.id.length, size);
+      return {...hole, hFile, showLabel, showDate};
+    });
   const points = coordinates.map(h => `${h.x},${h.y}`).join(' ');
   draw(scene,'polygon',{points,fill:'none',stroke:'#c6d5d5','stroke-width':1.5,'stroke-linejoin':'round'});
   const completionOrder = hole => hole.date === selectedDate ? 2 : Number(Boolean(hole.date));
@@ -296,34 +308,30 @@ function render() {
   for (const hole of ordered) {
     const done = Boolean(hole.date);
     const selected = state.selected === hole.id;
-    const hFile = typeOf(hole.id)==='h';
+    const {hFile, showLabel, showDate} = hole;
     const cipCompletion = done && !hFile;
     const completionClass = cipCompletion ? 'cip-completion' : '';
-    const outline = selected ? 1.75 : done ? (cipCompletion && !detail ? .7 : 1.1) : detail ? (hFile ? 1.2 : .8) : .55;
+    const outline = selected ? 1.75 : done ? 1.1 : detail ? (hFile ? 1.2 : .8) : .55;
     const fill = done ? 'var(--done-fill)' : hFile ? 'var(--h-fill)' : '#fdfefe';
     const stroke = selected ? 'var(--teal)' : done ? 'var(--done-edge)' : hFile ? 'var(--h-edge)' : '#698589';
     if (selected) draw(scene, 'circle', {cx:hole.x, cy:hole.y, r:size+5, fill:'none', stroke:'var(--teal)', 'stroke-width':2, 'pointer-events':'none'});
     const node = draw(scene,'circle',{cx:hole.x,cy:hole.y,r:size*.95,fill,stroke,'stroke-width':outline,class:completionClass,'data-hole':hole.id,opacity:done||selected||detail?1:.55});
-    draw(node,'title',{},`${hole.id} · ${hole.date || incompleteLabel(hole.id)}`);
+    if (showLabel) {
+      draw(node, 'title', {}, showDate ? `${hole.id} · ${hole.date}` : hole.id);
+    }
     if (hole.date === selectedDate) {
       draw(scene, 'circle', {cx:hole.x, cy:hole.y, r:size+1.4, class:'timeline-marker', 'pointer-events':'none'});
     }
-    if (detail && done && numberFits(hole,size)) {
+    if (showDate) {
       draw(scene,'text',{x:hole.x,y:hole.y+4,'text-anchor':'middle','font-size':11,'font-weight':700,fill:'var(--done-number-ink)',class:completionClass,'pointer-events':'none','data-number':hole.id},hole.id);
     }
   }
   const occupied = [];
   const labelHoles = [...visible].sort((a,b) => (Number(b.id===state.selected) - Number(a.id===state.selected)) || (detail ? completionOrder(b) - completionOrder(a) : 0));
   for (const hole of labelHoles) {
-    const {date} = hole;
-    const selected = state.selected === hole.id;
-    let label;
-    if (detail && date) {
-      label = numberFits(hole,size) ? fmtDate(date) : `${hole.id} · ${fmtDate(date)}`;
-    }
-    else if (selected || (detail && viewport.scale >= 10)) label=hole.id;
-    else if (typeOf(hole.id)==='h' && Number(hole.id)%step===0) label=hole.id;
-    if (!label) continue;
+    const {date, hFile, showLabel, showDate} = hole;
+    if (!showLabel) continue;
+    const label = showDate ? fmtDate(date) : hole.id;
     const boxWidth = Math.max(25,label.length*6.3+8);
     for (const stagger of [0,17,34,51,68]) {
       const offset = size + 13 + stagger;
@@ -334,14 +342,13 @@ function render() {
       if (left<2 || left+boxWidth>width-2 || top<2 || top+16>height-2) continue;
       if (occupied.some(box => left < box.left+box.w+2 && left+boxWidth+2 > box.left && top < box.top+18 && top+18 > box.top)) continue;
       occupied.push({left,top,w:boxWidth});
-      const completedLabel = detail && Boolean(date);
-      const labelLayer = completedLabel && typeOf(hole.id) === 'cip'
+      const labelLayer = showDate && !hFile
         ? draw(scene, 'g', {class:'cip-completion'}) : scene;
-      const color = completedLabel ? 'var(--done-edge)' : '#698589';
+      const color = showDate ? 'var(--done-edge)' : '#698589';
       const start = size*.93;
       draw(labelLayer,'line',{x1:hole.x+hole.nx*start,y1:hole.y+hole.ny*start,x2:x,y2:y,stroke:color,'stroke-width':1,'pointer-events':'none'});
-      draw(labelLayer,'rect',{x:left,y:top,width:boxWidth,height:16,rx:3,fill:completedLabel?'var(--done-label-fill)':'#eef5f4',stroke:color,'stroke-width':.65,'pointer-events':'none'});
-      draw(labelLayer,'text',{x,y:y+4,'text-anchor':'middle','font-size':11,'font-weight':650,fill:completedLabel?'var(--done-label-ink)':'#315456','pointer-events':'none','data-label-for':hole.id},label);
+      draw(labelLayer,'rect',{x:left,y:top,width:boxWidth,height:16,rx:3,fill:showDate?'var(--done-label-fill)':'#eef5f4',stroke:color,'stroke-width':.65,'pointer-events':'none'});
+      draw(labelLayer,'text',{x,y:y+4,'text-anchor':'middle','font-size':11,'font-weight':650,fill:showDate?'var(--done-label-ink)':'#315456','pointer-events':'none','data-label-for':hole.id},label);
       break;
     }
   }
@@ -358,7 +365,7 @@ function setView(detail) {
   const hole = byId.get(state.selected);
   if (detail) {
     if (!hole) return;
-    state.zoom = Math.min(zoomLimit, 14 / (viewport.scale/state.zoom));
+    state.zoom = Math.min(zoomLimit, detailViewScale / (viewport.scale/state.zoom));
     state.x = hole.x;
     state.y = hole.y;
   } else {
