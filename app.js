@@ -35,7 +35,6 @@ const timeline = $('timeline-date');
 const rigDate = $('rig-date');
 const dailyProgressPageSize = 10;
 let dailyProgressLimit = dailyProgressPageSize;
-let dailyProgressDate;
 let today = projectToday();
 let firstDate = today;
 let pastDate = null;
@@ -138,13 +137,8 @@ function renderRigProgress(selectedDate) {
   });
   $('rig-progress').replaceChildren(...rigRows);
 }
-function renderDailyProgress(selectedDate) {
-  if (selectedDate !== dailyProgressDate) {
-    dailyProgressDate = selectedDate;
-    dailyProgressLimit = dailyProgressPageSize;
-  }
-  const days = completionDays.filter(({date}) => date <= selectedDate);
-  const dailyRows = days.slice(0, dailyProgressLimit).map(({date, total, h, cip}) => {
+function renderDailyProgress() {
+  const dailyRows = completionDays.slice(0, dailyProgressLimit).map(({date, total, h, cip}) => {
     const row = document.createElement('tr');
     const heading = document.createElement('th');
     heading.scope = 'row';
@@ -158,14 +152,14 @@ function renderDailyProgress(selectedDate) {
   $('daily-progress').replaceChildren(...dailyRows);
   $('daily-progress-empty').hidden = dailyRows.length !== 0;
   const more = $('daily-progress-more');
-  const remaining = days.length - dailyRows.length;
+  const remaining = completionDays.length - dailyRows.length;
   more.hidden = remaining === 0;
   more.textContent = `더보기 · ${remaining}일 남음`;
 }
 $('daily-progress-more').onclick = () => {
   const firstNewIndex = dailyProgressLimit;
   dailyProgressLimit += dailyProgressPageSize;
-  renderDailyProgress(pastDate || today);
+  renderDailyProgress();
   const heading = $('daily-progress').rows[firstNewIndex]?.cells[0];
   if (heading) {
     heading.tabIndex = -1;
@@ -186,7 +180,6 @@ function renderTimeline() {
   $('tracker').classList.toggle('historical-view', Boolean(pastDate));
   renderMetrics();
   renderRigProgress(selectedDate);
-  renderDailyProgress(selectedDate);
 }
 function refreshTimeline() {
   today = projectToday();
@@ -549,6 +542,7 @@ function applyRecords(rows) {
     revisions.set(item.id,item.revision);
   }
   completionDays = CompletionTools.group(records);
+  renderDailyProgress();
   renderHistory();
   refreshTimeline();
 }
@@ -1014,8 +1008,9 @@ async function load() {
     $('account').hidden=false;
     const name = user.applicant || user.email;
     const company = user.company || '미등록';
-    $('account-name').textContent = name;
-    $('account-name').title = name;
+    const accountName = user.role === 'admin' ? `${name}(ADMIN)` : name;
+    $('account-name').textContent = accountName;
+    $('account-name').title = accountName;
     $('account-company').textContent = company;
     $('account-company').title = company;
     $('profile-name').textContent = name;
