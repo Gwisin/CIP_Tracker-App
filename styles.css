@@ -214,6 +214,12 @@ td { padding: 8px 9px; border-bottom: 1px solid #e6edf1; vertical-align: top; fo
 .approvals td:first-child { overflow-wrap: anywhere; }
 .approvals th:last-child { width: 90px; }
 .approvals .message { margin-top: 14px; }
+.approval-actions { display: grid; justify-items: start; }
+.applicant-edit fieldset { display: grid; gap: 12px; margin-top: 14px; }
+.applicant-edit label { display: grid; gap: 5px; font-weight: 600; }
+.applicant-edit input { font-weight: 400; }
+.applicant-edit .action-row { margin-top: 0; }
+.applicant-edit .message:empty { display: none; }
 .gate-open {
   display: flex;
   flex-direction: column;
@@ -384,7 +390,10 @@ dialog .action-row { justify-content: flex-end; }
   button, #close-hole-popup, .record-hole { min-height: 44px; }
   .map-navigation button { min-width: 40px; }
 }
-@media (max-width: 420px) {
+@media (max-width: 700px) and (orientation: portrait) {
+  .brand-suffix { display: none; }
+}
+@media (max-width: 420px) and (orientation: landscape) {
   .mast { flex-wrap: wrap; }
   .account { flex-basis: 100%; justify-content: space-between; }
 }

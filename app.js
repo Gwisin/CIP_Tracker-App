@@ -285,7 +285,7 @@ function render() {
   const scene = document.createDocumentFragment();
   const atMinimumZoom = state.zoom === overview.zoom;
   const zoomPercent = Math.round(state.zoom * 100);
-  const referenceInterval = zoomPercent <= 150 ? 20 : 5;
+  const referenceInterval = zoomPercent <= 150 ? 20 : zoomPercent <= 250 ? 10 : 5;
   const detail = viewport.scale >= 4;
   const size = Math.max(1,1.39*viewport.scale);
   // Keep cage labels hidden until a full ID such as 215-1 fits.
@@ -875,6 +875,62 @@ $('view-records').onclick = () => {
   window.scrollTo(0, 0);
   $('history-title').focus({preventScroll:true});
 };
+const applicantDialog = $('applicant-edit');
+const applicantForm = $('applicant-edit-form');
+const applicantFields = $('applicant-edit-fields');
+let editingApplicant = null;
+
+function renderApplicantProfile(profile, account) {
+  profile.replaceChildren();
+  if (account.applicant) {
+    const name = document.createElement('strong');
+    name.textContent = account.applicant;
+    const company = document.createElement('div');
+    company.textContent = account.company;
+    const phone = document.createElement('div');
+    phone.textContent = account.phone;
+    profile.append(name, company, phone);
+  }
+  const email = document.createElement('div');
+  email.textContent = account.email;
+  profile.append(email);
+}
+function openApplicantEditor(account, profile) {
+  editingApplicant = {account, profile};
+  for (const name of ['company', 'applicant', 'phone']) {
+    applicantForm.elements.namedItem(name).value = account[name] ?? '';
+  }
+  $('applicant-edit-email').textContent = account.email;
+  $('applicant-edit-status').textContent = '';
+  applicantDialog.showModal();
+}
+$('cancel-applicant-edit').onclick = () => applicantDialog.close();
+applicantDialog.addEventListener('cancel', event => {
+  if (applicantFields.disabled) event.preventDefault();
+});
+applicantDialog.addEventListener('close', () => { editingApplicant = null; });
+applicantForm.onsubmit = async event => {
+  event.preventDefault();
+  if (!editingApplicant || applicantFields.disabled) return;
+  const {account, profile} = editingApplicant;
+  const body = {subject:account.subject, ...Object.fromEntries(new FormData(applicantForm))};
+  const status = $('applicant-edit-status');
+  status.textContent = '';
+  applicantFields.disabled = true;
+  try {
+    const {profile:saved} = await api('/api/users/profile', {method:'POST', body});
+    Object.assign(account, saved);
+    if (profile.isConnected) renderApplicantProfile(profile, account);
+    applicantDialog.close();
+    if (profile.isConnected || await loadUsers()) {
+      $('users-status').textContent = `${account.email} 계정의 신청자 정보를 저장했습니다.`;
+    }
+  } catch (error) {
+    status.textContent = error.message;
+  } finally {
+    applicantFields.disabled = false;
+  }
+};
 async function loadUsers() {
   const request = ++usersRequest;
   const status=$('users-status');
@@ -892,18 +948,7 @@ async function loadUsers() {
     for (const account of data.users) {
       const row=users.insertRow();
       const profile = row.insertCell();
-      if (account.applicant) {
-        const name = document.createElement('strong');
-        name.textContent = account.applicant;
-        const company = document.createElement('div');
-        company.textContent = account.company;
-        const phone = document.createElement('div');
-        phone.textContent = account.phone;
-        profile.append(name, company, phone);
-      }
-      const email = document.createElement('div');
-      email.textContent = account.email;
-      profile.append(email);
+      renderApplicantProfile(profile, account);
       const role=document.createElement('select');
       role.setAttribute('aria-label',`${account.email} 권한`);
       const awaitingApproval = account.role === 'pending';
@@ -944,7 +989,16 @@ async function loadUsers() {
           updateAction();
         }
       };
-      row.insertCell().append(apply);
+      const edit = document.createElement('button');
+      edit.type = 'button';
+      edit.className = 'header-action';
+      edit.textContent = '정보 수정';
+      edit.setAttribute('aria-label', `${account.email} 신청자 정보 수정`);
+      edit.onclick = () => openApplicantEditor(account, profile);
+      const actions = document.createElement('div');
+      actions.className = 'approval-actions';
+      actions.append(apply, edit);
+      row.insertCell().append(actions);
     }
     status.textContent=data.users.length?'':'승인을 요청한 계정이 아직 없습니다.';
     return true;
