@@ -294,7 +294,6 @@ function render() {
   const coordinates = holes.map(hole => ({...hole, ...project(hole), date:completionOnDate(hole.id)}));
   const visible = coordinates
     .filter(hole => hole.x>=-size && hole.x<=width+size && hole.y>=-size && hole.y<=height+size)
-    .filter(hole => detail || typeOf(hole.id) === 'h')
     .map(hole => {
       const hFile = typeOf(hole.id) === 'h';
       const firstHole = hole.id === '1';
@@ -317,7 +316,7 @@ function render() {
     const {hFile, showLabel, showDate} = hole;
     const cipCompletion = done && !hFile;
     const completionClass = cipCompletion ? 'cip-completion' : '';
-    const outline = selected ? 1.75 : done ? 1.1 : detail ? (hFile ? 1.2 : .8) : .55;
+    const outline = selected ? 1.75 : done ? (cipCompletion && !detail ? .7 : 1.1) : detail ? (hFile ? 1.2 : .8) : .55;
     const fill = done ? 'var(--done-fill)' : hFile ? 'var(--h-fill)' : '#fdfefe';
     const stroke = selected ? 'var(--teal)' : done ? 'var(--done-edge)' : hFile ? 'var(--h-edge)' : '#698589';
     if (selected) draw(scene, 'circle', {cx:hole.x, cy:hole.y, r:size+5, fill:'none', stroke:'var(--teal)', 'stroke-width':2, 'pointer-events':'none'});
