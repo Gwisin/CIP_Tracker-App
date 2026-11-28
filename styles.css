@@ -384,7 +384,7 @@ dialog .action-row { justify-content: flex-end; }
   button, #close-hole-popup, .record-hole { min-height: 44px; }
   .map-navigation button { min-width: 40px; }
 }
-@media (max-width: 380px) {
+@media (max-width: 420px) {
   .mast { flex-wrap: wrap; }
   .account { flex-basis: 100%; justify-content: space-between; }
 }
