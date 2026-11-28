@@ -283,6 +283,8 @@ function render() {
   viewport = {width,height,scale:Math.min((width-64)/707,(height-verticalPadding)/797)*state.zoom};
   map.setAttribute('viewBox', `0 0 ${width} ${height}`);
   const scene = document.createDocumentFragment();
+  const atMinimumZoom = state.zoom === overview.zoom;
+  const referenceInterval = atMinimumZoom ? 20 : 5;
   const detail = viewport.scale >= 4;
   const size = Math.max(1,1.39*viewport.scale);
   // Keep cage labels hidden until a full ID such as 215-1 fits.
@@ -294,7 +296,8 @@ function render() {
     .filter(hole => detail || typeOf(hole.id) === 'h')
     .map(hole => {
       const hFile = typeOf(hole.id) === 'h';
-      const referenceNumber = hFile && Number(hole.id) % 5 === 0;
+      const referenceNumber = hFile && (Number(hole.id) % referenceInterval === 0 ||
+        (atMinimumZoom && hole.id === '1'));
       const showLabel = referenceNumber || (detail && (hFile || showCipLabels) &&
         (Boolean(hole.date) || hole.id === state.selected || viewport.scale >= 10));
       const showDate = detail && showLabel && Boolean(hole.date) && numberFits(hole.id.length, size);
@@ -357,7 +360,7 @@ function render() {
   $('selection').classList.toggle('visible',Boolean(choice));
   $('selection').textContent = choice ? `${choice.id} · ${typeOf(choice.id)==='h'?'H파일':'철근망'} · ${completionOnDate(choice.id) || incompleteLabel(choice.id)}` : '';
   $('zoom-value').textContent = Math.round(state.zoom*100)+'%';
-  $('overview').setAttribute('aria-pressed', String(state.zoom === 1 && state.x === overview.x && state.y === overview.y));
+  $('overview').setAttribute('aria-pressed', String(atMinimumZoom && state.x === overview.x && state.y === overview.y));
   renderInspector();
 }
 function setView(detail) {
