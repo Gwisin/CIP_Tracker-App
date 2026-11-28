@@ -284,7 +284,8 @@ function render() {
   map.setAttribute('viewBox', `0 0 ${width} ${height}`);
   const scene = document.createDocumentFragment();
   const atMinimumZoom = state.zoom === overview.zoom;
-  const referenceInterval = atMinimumZoom ? 20 : 5;
+  const zoomPercent = Math.round(state.zoom * 100);
+  const referenceInterval = zoomPercent <= 150 ? 20 : 5;
   const detail = viewport.scale >= 4;
   const size = Math.max(1,1.39*viewport.scale);
   // Keep cage labels hidden until a full ID such as 215-1 fits.
@@ -296,12 +297,14 @@ function render() {
     .filter(hole => detail || typeOf(hole.id) === 'h')
     .map(hole => {
       const hFile = typeOf(hole.id) === 'h';
-      const referenceNumber = hFile && (Number(hole.id) % referenceInterval === 0 ||
-        (atMinimumZoom && hole.id === '1'));
+      const firstHole = hole.id === '1';
+      const referenceNumber = hFile && (firstHole || Number(hole.id) % referenceInterval === 0);
       const showLabel = referenceNumber || (detail && (hFile || showCipLabels) &&
         (Boolean(hole.date) || hole.id === state.selected || viewport.scale >= 10));
-      const showDate = detail && showLabel && Boolean(hole.date) && numberFits(hole.id.length, size);
-      return {...hole, hFile, showLabel, showDate};
+      const numberOnScreen = !firstHole || (hole.x >= 7 && hole.x <= width - 7 &&
+        hole.y >= 7 && hole.y <= height - 7);
+      const showDate = detail && showLabel && Boolean(hole.date) && numberFits(hole.id.length, size) && numberOnScreen;
+      return {...hole, firstHole, hFile, showLabel, showDate};
     });
   const points = coordinates.map(h => `${h.x},${h.y}`).join(' ');
   draw(scene,'polygon',{points,fill:'none',stroke:'#c6d5d5','stroke-width':1.5,'stroke-linejoin':'round'});
@@ -330,16 +333,24 @@ function render() {
     }
   }
   const occupied = [];
-  const labelHoles = [...visible].sort((a,b) => (Number(b.id===state.selected) - Number(a.id===state.selected)) || (detail ? completionOrder(b) - completionOrder(a) : 0));
+  const labelOffsets = [0, 17, 34, 51, 68].map(stagger => size + 13 + stagger);
+  const labelHoles = [...visible].sort((a, b) => Number(b.firstHole) - Number(a.firstHole) ||
+    (Number(b.id === state.selected) - Number(a.id === state.selected)) ||
+    (detail ? completionOrder(b) - completionOrder(a) : 0));
   for (const hole of labelHoles) {
-    const {date, hFile, showLabel, showDate} = hole;
+    const {date, firstHole, hFile, showLabel, showDate} = hole;
     if (!showLabel) continue;
     const label = showDate ? fmtDate(date) : hole.id;
     const boxWidth = Math.max(25,label.length*6.3+8);
-    for (const stagger of [0,17,34,51,68]) {
-      const offset = size + 13 + stagger;
-      const x = hole.x + hole.nx*offset;
-      const y = hole.y + hole.ny*offset;
+    // Keep hole 1 readable when its usual label position falls outside the drawing.
+    const offsets = firstHole ? [...labelOffsets, -labelOffsets[0]] : labelOffsets;
+    for (const offset of offsets) {
+      let x = hole.x + hole.nx*offset;
+      let y = hole.y + hole.ny*offset;
+      if (offset < 0) {
+        x = Math.max(2 + boxWidth / 2, Math.min(width - 2 - boxWidth / 2, x));
+        y = Math.max(10, Math.min(height - 10, y));
+      }
       const left = x-boxWidth/2;
       const top = y-8;
       if (left<2 || left+boxWidth>width-2 || top<2 || top+16>height-2) continue;
@@ -348,7 +359,7 @@ function render() {
       const labelLayer = showDate && !hFile
         ? draw(scene, 'g', {class:'cip-completion'}) : scene;
       const color = showDate ? 'var(--done-edge)' : '#698589';
-      const start = size*.93;
+      const start = size * .93 * Math.sign(offset);
       draw(labelLayer,'line',{x1:hole.x+hole.nx*start,y1:hole.y+hole.ny*start,x2:x,y2:y,stroke:color,'stroke-width':1,'pointer-events':'none'});
       draw(labelLayer,'rect',{x:left,y:top,width:boxWidth,height:16,rx:3,fill:showDate?'var(--done-label-fill)':'#eef5f4',stroke:color,'stroke-width':.65,'pointer-events':'none'});
       draw(labelLayer,'text',{x,y:y+4,'text-anchor':'middle','font-size':11,'font-weight':650,fill:showDate?'var(--done-label-ink)':'#315456','pointer-events':'none','data-label-for':hole.id},label);
@@ -359,7 +370,7 @@ function render() {
   const choice = byId.get(state.selected);
   $('selection').classList.toggle('visible',Boolean(choice));
   $('selection').textContent = choice ? `${choice.id} · ${typeOf(choice.id)==='h'?'H파일':'철근망'} · ${completionOnDate(choice.id) || incompleteLabel(choice.id)}` : '';
-  $('zoom-value').textContent = Math.round(state.zoom*100)+'%';
+  $('zoom-value').textContent = zoomPercent + '%';
   $('overview').setAttribute('aria-pressed', String(atMinimumZoom && state.x === overview.x && state.y === overview.y));
   renderInspector();
 }
