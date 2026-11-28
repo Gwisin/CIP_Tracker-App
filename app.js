@@ -1008,12 +1008,14 @@ async function load() {
     $('account').hidden=false;
     const name = user.applicant || user.email;
     const company = user.company || '미등록';
-    const accountName = user.role === 'admin' ? `${name}(ADMIN)` : name;
-    $('account-name').textContent = accountName;
-    $('account-name').title = accountName;
+    const displayName = user.role === 'admin'
+      ? `${name.replace(/(?:\s*\(admin\))+\s*$/i, '')}(ADMIN)`
+      : name;
+    $('account-name').textContent = displayName;
+    $('account-name').title = displayName;
     $('account-company').textContent = company;
     $('account-company').title = company;
-    $('profile-name').textContent = name;
+    $('profile-name').textContent = displayName;
     $('profile-company').textContent = company;
     $('profile-role').textContent = roleName[user.role];
     if (user.role === 'pending') {
