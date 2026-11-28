@@ -16,8 +16,8 @@
 <body class="gate-open login-open">
 <header class="site-header" id="site-header" hidden>
   <div class="mast">
-    <span class="brand" id="header-title">토목공사 공정현황</span>
-    <button class="brand" type="button" id="tracker-menu" aria-controls="tracker" hidden>토목공사 공정현황</button>
+    <span class="brand" id="header-title">토목공사<span class="brand-suffix"> 공정현황</span></span>
+    <button class="brand" type="button" id="tracker-menu" aria-controls="tracker" hidden>토목공사<span class="brand-suffix"> 공정현황</span></button>
     <div class="account" id="account" hidden>
       <div class="account-identity"><strong id="account-name"></strong><span id="account-company"></span></div>
       <button class="header-action" type="button" id="records-menu" aria-controls="record-manager" hidden>기록관리</button>
@@ -192,6 +192,22 @@
     </section>
   </section>
 </main>
+<dialog class="applicant-edit" id="applicant-edit" aria-labelledby="applicant-edit-title">
+  <h2 id="applicant-edit-title">신청자 정보 수정</h2>
+  <p id="applicant-edit-email"></p>
+  <form id="applicant-edit-form">
+    <fieldset id="applicant-edit-fields">
+      <label>회사명 <input name="company" type="text" maxlength="100" required></label>
+      <label>사용자명 <input name="applicant" type="text" maxlength="100" required></label>
+      <label>전화번호 <input name="phone" type="tel" maxlength="30" required></label>
+      <div class="action-row">
+        <button type="button" id="cancel-applicant-edit">취소</button>
+        <button class="primary" type="submit">정보 저장</button>
+      </div>
+    </fieldset>
+    <p class="message error" id="applicant-edit-status" role="alert"></p>
+  </form>
+</dialog>
 <dialog id="entries" aria-labelledby="entry-title">
   <div class="section-title"><div><h2 id="entry-title">타설기록 추가</h2><p id="entry-help">완료일과 홀 번호를 입력하거나 엑셀에서 붙여넣으세요. 같은 날짜의 홀은 쉼표로 구분합니다. H파일과 철근망은 홀 번호로 자동 분류되며, 한 번에 최대 100개 홀을 저장할 수 있습니다.</p></div><div class="editor-actions"><button type="button" id="add">＋ 행 추가</button><button type="button" id="close-entry">닫기</button></div></div>
   <form id="entry-form" novalidate><fieldset id="bulk-fields"><div class="table-shell" id="entry-table-shell"><table class="completion-table entry-table" aria-label="타설완료일 입력"><colgroup><col class="date-col"><col><col class="remove-col"></colgroup><thead><tr><th scope="col">완료일</th><th scope="col">홀 번호</th><th scope="col" aria-label="입력 행 삭제"></th></tr></thead><tbody id="rows"></tbody></table></div><button type="button" id="edit-more" aria-controls="rows" hidden>더보기</button><div class="action-row"><p id="message" class="message" role="status"></p><button class="primary" type="submit" id="save-records">기록 저장</button></div></fieldset></form>
